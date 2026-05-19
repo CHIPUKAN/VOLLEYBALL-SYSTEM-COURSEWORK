@@ -114,19 +114,30 @@ const PlayerRadarChart: React.FC<PlayerRadarChartProps> = ({
         strokeWidth={1.5}
       />
 
-      {/* точки игрока */}
+      {/* точки и значения игрока */}
       {AXES.map((ax, i) => {
         const val = (stats as unknown as Record<string, number>)[ax.key] ?? 0;
         const r = Math.min(val / ax.max, 1) * radius;
         const p = point(i, r);
+        const labelR = radius + 18;
+        const lp = point(i, labelR);
+        const offsetX = lp.x > cx + 2 ? 5 : lp.x < cx - 2 ? -5 : 0;
+        const offsetY = lp.y > cy + 2 ? 10 : lp.y < cy - 2 ? -4 : 4;
         return (
-          <circle
-            key={i}
-            cx={p.x}
-            cy={p.y}
-            r={3}
-            fill="#1677ff"
-          />
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r={3} fill="#1677ff" />
+            <text
+              x={lp.x + offsetX}
+              y={lp.y + offsetY}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontSize={9}
+              fontWeight={700}
+              fill="#1677ff"
+            >
+              {val}
+            </text>
+          </g>
         );
       })}
     </svg>

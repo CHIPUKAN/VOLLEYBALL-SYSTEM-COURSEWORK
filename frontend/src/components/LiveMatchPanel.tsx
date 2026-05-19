@@ -412,11 +412,18 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
         },
       });
 
-      // обновить расстановку локально
+      // обновить расстановку локально с именем и номером нового игрока
+      const allTeamPlayers = data.teamId === match.homeTeamId ? allHomePlayersFull : allGuestPlayersFull;
+      const incomingPlayer = allTeamPlayers.find(p => p.id === data.subInPlayerId);
       setCurrentSetLineups(prev =>
         prev.map(l =>
           l.teamId === data.teamId && l.playerId === data.subOutPlayerId
-            ? { ...l, playerId: data.subInPlayerId }
+            ? {
+                ...l,
+                playerId: data.subInPlayerId,
+                playerFullName: incomingPlayer?.fullName ?? incomingPlayer?.lastName ?? `Игрок ${data.subInPlayerId}`,
+                shirtNumber: incomingPlayer?.jerseyNumber,
+              }
             : l
         )
       );
@@ -606,7 +613,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
                     renderItem={(ev) => (
                       <List.Item style={{ padding: '3px 0', borderBottom: '1px solid #f0f0f0' }}>
                         <Text style={{ fontSize: 12 }}>
-                          {ev.playerName ? `${ev.playerName}` : (ev.teamName ?? '—')}
+                          {ev.playerFullName ? `${ev.playerFullName}` : (ev.teamName ?? '—')}
                           {' — '}
                           {ev.eventTypeName ?? `тип ${ev.eventTypeCode}`}
                           {'  '}
@@ -724,7 +731,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
             >
               <div style={{ padding: '4px 12px 8px', borderBottom: '1px solid #f0f0f0' }}>
                 <Text strong style={{ fontSize: 13 }}>
-                  {contextMenu.player.playerName ?? `Игрок ${contextMenu.player.playerId}`}
+                  {contextMenu.player.playerFullName ?? `Игрок ${contextMenu.player.playerId}`}
                 </Text>
                 <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
                   Позиция {contextMenu.player.positionNo}
@@ -797,7 +804,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
       <ActionPickerModal
         open={actionPickerOpen}
         player={selectedPlayer}
-        playerFullName={selectedPlayer?.playerName}
+        playerFullName={selectedPlayer?.playerFullName}
         teamName={
           selectedPlayer?.teamId === match.homeTeamId
             ? (match.homeTeamName ?? 'Хозяева')

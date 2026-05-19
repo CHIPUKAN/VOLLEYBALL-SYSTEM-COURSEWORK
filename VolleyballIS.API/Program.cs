@@ -111,6 +111,7 @@ builder.Services.AddScoped<IMatchCaptainService, MatchCaptainService>();
 builder.Services.AddScoped<IDelegationService, DelegationService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProtocolHistoryService, ProtocolHistoryService>();
+builder.Services.AddScoped<IStandingService, StandingService>();
 
 // Контроллеры
 builder.Services.AddControllers();

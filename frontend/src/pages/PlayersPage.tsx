@@ -6,7 +6,7 @@ import {
 import { PlusOutlined, EditOutlined, DeleteOutlined, UnorderedListOutlined, AppstoreOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { playersApi, playerStatsApi } from '../api/index';
+import { playersApi } from '../api/index';
 import { lookupsApi } from '../api/lookupsApi';
 import type { Player, LookupDto, LookupItemDto, PlayerStats } from '../types/index';
 import PlayerCard from '../components/PlayerCard';
@@ -103,9 +103,9 @@ const PlayersPage: React.FC = () => {
       teamId: record.teamId,
       ampluaCode: record.ampluaCode,
       statusCode: record.statusCode,
-      shirtNumber: record.shirtNumber,
-      height: record.height,
-      weight: record.weight,
+      jerseyNumber: record.jerseyNumber,
+      heightCm: record.heightCm,
+      weightKg: record.weightKg,
       birthDate: record.birthDate ? dayjs(record.birthDate) : undefined,
     });
     setModalOpen(true);
@@ -150,36 +150,10 @@ const PlayersPage: React.FC = () => {
     }
   };
 
-  const handlePlayerClick = async (player: Player) => {
+  const handlePlayerClick = (player: Player) => {
     setRadarPlayer(player);
+    setRadarStats(null);
     setRadarOpen(true);
-    try {
-      // загрузить все матчи игрока из всех матчей — упрощённо суммируем статистику
-      // на практике нужен отдельный endpoint; здесь используем что есть
-      const allStats = await playerStatsApi.getAll(0).catch(() => [] as PlayerStats[]);
-      const playerStats = allStats.filter(s => s.playerId === player.id);
-      if (playerStats.length > 0) {
-        const summed: PlayerStats = playerStats.reduce((acc, s) => ({
-          ...acc,
-          servesTotal: acc.servesTotal + s.servesTotal,
-          aces: acc.aces + s.aces,
-          serveErrors: acc.serveErrors + s.serveErrors,
-          receptionsTotal: acc.receptionsTotal + s.receptionsTotal,
-          positiveReceptions: acc.positiveReceptions + s.positiveReceptions,
-          receptionErrors: acc.receptionErrors + s.receptionErrors,
-          attacksTotal: acc.attacksTotal + s.attacksTotal,
-          attackPoints: acc.attackPoints + s.attackPoints,
-          attackErrors: acc.attackErrors + s.attackErrors,
-          blocks: acc.blocks + s.blocks,
-          totalPoints: acc.totalPoints + s.totalPoints,
-        }), { ...playerStats[0] });
-        setRadarStats(summed);
-      } else {
-        setRadarStats(null);
-      }
-    } catch {
-      setRadarStats(null);
-    }
   };
 
   const handleTeamDrop = async (teamId: number, teamName: string) => {
@@ -231,8 +205,8 @@ const PlayersPage: React.FC = () => {
     },
     {
       title: '№',
-      dataIndex: 'shirtNumber',
-      key: 'shirtNumber',
+      dataIndex: 'jerseyNumber',
+      key: 'jerseyNumber',
       width: 60,
       render: (n: number) => n ?? '—',
     },
@@ -241,8 +215,8 @@ const PlayersPage: React.FC = () => {
       key: 'sizes',
       render: (_: unknown, r: Player) => {
         const parts = [];
-        if (r.height) parts.push(`${r.height} см`);
-        if (r.weight) parts.push(`${r.weight} кг`);
+        if (r.heightCm) parts.push(`${r.heightCm} см`);
+        if (r.weightKg) parts.push(`${r.weightKg} кг`);
         return parts.join(' / ') || '—';
       },
     },
@@ -252,7 +226,7 @@ const PlayersPage: React.FC = () => {
       width: 100,
       fixed: 'right',
       render: (_: unknown, record: Player) => (
-        <Space>
+        <Space onClick={e => e.stopPropagation()}>
           <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" />
           <Popconfirm
             title="Удалить игрока?"
@@ -452,22 +426,22 @@ const PlayersPage: React.FC = () => {
           </Row>
           <Row gutter={16}>
             <Col xs={24} sm={6}>
-              <Form.Item name="shirtNumber" label="Номер (футболка)">
+              <Form.Item name="jerseyNumber" label="Номер (футболка)">
                 <InputNumber min={1} max={99} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={6}>
-              <Form.Item name="height" label="Рост (см)">
-                <InputNumber min={150} max={230} style={{ width: '100%' }} />
+              <Form.Item name="heightCm" label="Рост (см)">
+                <InputNumber min={150} max={220} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={6}>
-              <Form.Item name="weight" label="Вес (кг)">
-                <InputNumber min={50} max={160} style={{ width: '100%' }} />
+              <Form.Item name="weightKg" label="Вес (кг)">
+                <InputNumber min={50} max={150} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={6}>
-              <Form.Item name="birthDate" label="Дата рождения">
+              <Form.Item name="birthDate" label="Дата рождения" rules={[{ required: true, message: 'Укажите дату рождения' }]}>
                 <DatePicker style={{ width: '100%' }} format="DD.MM.YYYY" />
               </Form.Item>
             </Col>

@@ -94,8 +94,8 @@ const ApplicationsPage: React.FC = () => {
   };
 
   // смена статуса из kanban (async для ApplicationKanban)
-  const handleKanbanStatusChange = async (appId: number, statusCode: number) => {
-    await applicationsApi.update(appId, { statusCode });
+  const handleKanbanStatusChange = async (appId: number, statusCode: number, comment?: string) => {
+    await applicationsApi.update(appId, { statusCode, ...(comment ? { comment } : {}) });
     await loadData();
   };
 

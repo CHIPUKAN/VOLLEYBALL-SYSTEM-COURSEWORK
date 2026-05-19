@@ -16,13 +16,15 @@ namespace VolleyballIS.Application.DTOs.Applications
 
         public string? TournamentName { get; set; } // наименование турнира
 
-        public DateOnly SubmissionDate { get; set; } // дата подачи заявки
+        public DateOnly SubmittedAt { get; set; } // дата подачи заявки
 
         public short StatusCode { get; set; } // код статуса заявки
 
         public string? StatusName { get; set; } // наименование статуса
 
-        public IEnumerable<ApplicationCompositionDto> Composition { get; set; } = new List<ApplicationCompositionDto>(); // состав заявки
+        public string? Comment { get; set; } // комментарий (причина отклонения и т.п.)
+
+        public IEnumerable<ApplicationCompositionDto> Players { get; set; } = new List<ApplicationCompositionDto>(); // состав заявки
         #endregion
     }
 }

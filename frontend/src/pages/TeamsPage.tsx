@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import {
   Table, Button, Modal, Form, Input, Select, Space, Popconfirm,
   App, Typography, Row, Col, Avatar, Tree, Tag, Tooltip,
-  Segmented,
+  Segmented, DatePicker,
 } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined,
@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { DataNode } from 'antd/es/tree';
+import dayjs from 'dayjs';
 import { teamsApi, playersApi } from '../api/index';
 import { lookupsApi } from '../api/lookupsApi';
 import type { Team, Player } from '../types/index';
@@ -175,8 +176,9 @@ const TeamsPage: React.FC = () => {
       middleName: player.middleName,
       ampluaCode: player.ampluaCode,
       statusCode: player.statusCode,
-      shirtNumber: player.shirtNumber,
+      jerseyNumber: player.jerseyNumber,
       teamId: player.teamId,
+      birthDate: player.birthDate ? dayjs(player.birthDate) : undefined,
     });
     setPlayerModalOpen(true);
   };
@@ -196,6 +198,9 @@ const TeamsPage: React.FC = () => {
     try {
       values = await playerForm.validateFields();
     } catch { return; }
+    if (values.birthDate) {
+      values.birthDate = (values.birthDate as dayjs.Dayjs).format('YYYY-MM-DD');
+    }
     setSavingPlayer(true);
     try {
       if (editPlayer) {
@@ -299,7 +304,7 @@ const TeamsPage: React.FC = () => {
           icon: <UserOutlined style={{ color: '#52c41a' }} />,
           title: (
             <Space>
-              <Text>{`#${player.shirtNumber ?? '—'} ${player.fullName ?? player.lastName}`}</Text>
+              <Text>{`#${player.jerseyNumber ?? '—'} ${player.fullName ?? player.lastName}`}</Text>
               {player.ampluaName && <Tag color="cyan" style={{ fontSize: 10 }}>{player.ampluaName}</Tag>}
               {player.statusName && (
                 <Tag color={player.statusCode === 1 ? 'green' : player.statusCode === 3 ? 'red' : 'orange'} style={{ fontSize: 10 }}>
@@ -350,8 +355,8 @@ const TeamsPage: React.FC = () => {
     },
     {
       title: 'Тренер',
-      dataIndex: 'headCoachName',
-      key: 'headCoachName',
+      dataIndex: 'headCoachFullName',
+      key: 'headCoachFullName',
       render: (name: string) => name ?? '—',
     },
     {
@@ -555,8 +560,8 @@ const TeamsPage: React.FC = () => {
             </Col>
           </Row>
           <Row gutter={12}>
-            <Col xs={12} sm={8}>
-              <Form.Item name="shirtNumber" label="Номер">
+            <Col xs={12} sm={6}>
+              <Form.Item name="jerseyNumber" label="Номер">
                 <Select
                   placeholder="№"
                   options={Array.from({ length: 99 }, (_, i) => ({ value: i + 1, label: String(i + 1) }))}
@@ -564,7 +569,7 @@ const TeamsPage: React.FC = () => {
                 />
               </Form.Item>
             </Col>
-            <Col xs={12} sm={8}>
+            <Col xs={12} sm={6}>
               <Form.Item name="ampluaCode" label="Амплуа">
                 <Select
                   placeholder="Выберите"
@@ -572,11 +577,16 @@ const TeamsPage: React.FC = () => {
                 />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={8}>
+            <Col xs={12} sm={6}>
               <Form.Item name="statusCode" label="Статус">
                 <Select
                   options={playerStatusLookup.map(s => ({ value: s.code, label: s.name }))}
                 />
+              </Form.Item>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Form.Item name="birthDate" label="Дата рождения" rules={[{ required: true, message: 'Обязательное' }]}>
+                <DatePicker style={{ width: '100%' }} format="DD.MM.YYYY" />
               </Form.Item>
             </Col>
           </Row>

@@ -59,7 +59,7 @@ namespace VolleyballIS.Application.Services
             {
                 TeamId = dto.TeamId,
                 TournamentId = dto.TournamentId,
-                SubmissionDate = dto.SubmissionDate,
+                SubmissionDate = DateOnly.FromDateTime(DateTime.Today),
                 StatusCode = dto.StatusCode
             };
             T7Application created = await applicationRepository.CreateAsync(app);
@@ -109,8 +109,8 @@ namespace VolleyballIS.Application.Services
             {
                 ApplicationId = applicationId,
                 PlayerId = dto.PlayerId,
-                JerseyNumberInApp = dto.JerseyNumberInApp,
-                Role = dto.Role,
+                JerseyNumberInApp = dto.ShirtNumber ?? 0,
+                Role = "основной",
                 IsLibero = dto.IsLibero
             };
             await applicationRepository.AddCompositionPlayerAsync(comp);
@@ -137,20 +137,20 @@ namespace VolleyballIS.Application.Services
                 TeamName = app.Team?.Name,
                 TournamentId = app.TournamentId,
                 TournamentName = app.Tournament?.Name,
-                SubmissionDate = app.SubmissionDate,
+                SubmittedAt = app.SubmissionDate,
                 StatusCode = app.StatusCode,
                 StatusName = app.Status?.Name,
-                Composition = app.Composition.Select(c => new ApplicationCompositionDto
+                Players = app.Composition.Select(c => new ApplicationCompositionDto
                 {
                     ApplicationId = c.ApplicationId,
                     PlayerId = c.PlayerId,
-                    PlayerFullName = c.Player != null
+                    PlayerName = c.Player != null
                         ? (c.Player.MiddleName != null
                             ? $"{c.Player.LastName} {c.Player.FirstName} {c.Player.MiddleName}"
                             : $"{c.Player.LastName} {c.Player.FirstName}")
                         : null,
-                    JerseyNumberInApp = c.JerseyNumberInApp,
-                    Role = c.Role,
+                    ShirtNumber = c.JerseyNumberInApp,
+                    AmpluaName = c.Role,
                     IsLibero = c.IsLibero
                 }).ToList()
             };

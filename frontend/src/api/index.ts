@@ -3,7 +3,7 @@ import type {
   Team, Venue, Coach, Player, Season, Organizer, Referee,
   Tournament, Group, Match, Application, RefereeAssignment,
   Protocol, SetDto, PlayerStats, StartingLineup, MatchEvent,
-  Sanction, Award, MatchCaptain, Delegation,
+  Sanction, Award, MatchCaptain, Delegation, StandingRow,
 } from '../types';
 
 // команды
@@ -212,6 +212,12 @@ export const captainsApi = {
     client.put<MatchCaptain>(`/matches/${matchId}/captains`, data).then(r => r.data),
   delete: (matchId: number, teamId: number) =>
     client.delete(`/matches/${matchId}/captains/${teamId}`),
+};
+
+// турнирная таблица
+export const standingsApi = {
+  get: (tournamentId: number, stageCode?: number, groupId?: number) =>
+    client.get<StandingRow[]>('/standings', { params: { tournamentId, stageCode, groupId } }).then(r => r.data),
 };
 
 // делегации

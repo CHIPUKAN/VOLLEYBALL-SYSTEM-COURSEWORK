@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Form, Select, Checkbox, Button, Radio, Typography, Space } from 'antd';
+import { Modal, Form, Select, Checkbox, Button, Radio, Typography, Space, Alert } from 'antd';
 import type { StartingLineup, Player, LookupDto } from '../types/index';
 
 const { Text } = Typography;
@@ -44,12 +44,40 @@ const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [selectedTeamId, setSelectedTeamId] = useState<number>(homeTeamId);
+  const [selectedSubOutId, setSelectedSubOutId] = useState<number | undefined>();
 
   const currentLineup = selectedTeamId === homeTeamId ? homeLineup : guestLineup;
   const allPlayers = selectedTeamId === homeTeamId ? allHomePlayers : allGuestPlayers;
+  const hasLineup = currentLineup.length > 0;
 
   const lineupPlayerIds = new Set(currentLineup.map(l => l.playerId));
-  const benchPlayers = allPlayers.filter(p => !lineupPlayerIds.has(p.id));
+
+  // если расстановка настроена — уходит только тот, кто в расстановке
+  // если нет — уходит любой игрок команды
+  const outgoingOptions = hasLineup
+    ? currentLineup.map(l => ({
+        value: l.playerId,
+        label: `${l.shirtNumber ? '#' + l.shirtNumber + ' ' : ''}${l.playerFullName ?? `Игрок ${l.playerId}`}`,
+      }))
+    : allPlayers.map(p => ({
+        value: p.id,
+        label: `${p.jerseyNumber ? '#' + p.jerseyNumber + ' ' : ''}${p.fullName ?? p.lastName}`,
+      }));
+
+  // приходит тот, кого нет в расстановке (или не совпадает с выбранным уходящим)
+  const incomingOptions = hasLineup
+    ? allPlayers
+        .filter(p => !lineupPlayerIds.has(p.id))
+        .map(p => ({
+          value: p.id,
+          label: `${p.jerseyNumber ? '#' + p.jerseyNumber + ' ' : ''}${p.fullName ?? p.lastName}`,
+        }))
+    : allPlayers
+        .filter(p => p.id !== selectedSubOutId)
+        .map(p => ({
+          value: p.id,
+          label: `${p.jerseyNumber ? '#' + p.jerseyNumber + ' ' : ''}${p.fullName ?? p.lastName}`,
+        }));
 
   const handleOk = async () => {
     let values: Record<string, unknown>;
@@ -59,20 +87,25 @@ const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
       subOutPlayerId: values.subOutPlayerId as number,
       subInPlayerId: values.subInPlayerId as number,
       subTypeCode: values.subTypeCode as number,
-      isLiberoSwap: values.isLiberoSwap as boolean ?? false,
+      isLiberoSwap: (values.isLiberoSwap as boolean) ?? false,
     });
     form.resetFields();
+    setSelectedSubOutId(undefined);
   };
 
   const handleCancel = () => {
     form.resetFields();
+    setSelectedSubOutId(undefined);
     onCancel();
   };
 
   const handleTeamChange = (teamId: number) => {
     setSelectedTeamId(teamId);
+    setSelectedSubOutId(undefined);
     form.resetFields(['subOutPlayerId', 'subInPlayerId']);
   };
+
+  const canSubmit = outgoingOptions.length > 0 && (incomingOptions.length > 0 || !hasLineup);
 
   return (
     <Modal
@@ -81,7 +114,7 @@ const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
       onCancel={handleCancel}
       footer={null}
       destroyOnClose
-      afterClose={() => form.resetFields()}
+      afterClose={() => { form.resetFields(); setSelectedSubOutId(undefined); }}
       width={480}
     >
       <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
@@ -103,30 +136,44 @@ const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
           </Radio.Group>
         </Form.Item>
 
+        {!hasLineup && (
+          <Alert
+            message="Расстановка не настроена"
+            description="Выберите любого игрока команды как уходящего и входящего."
+            type="warning"
+            showIcon
+            style={{ marginBottom: 12 }}
+          />
+        )}
+
         {/* выходящий игрок */}
         <Form.Item name="subOutPlayerId" label="Выходящий (на замену)" rules={[{ required: true, message: 'Выберите игрока' }]}>
-          <Select
-            placeholder="Игрок из расстановки"
-            options={currentLineup.map(l => ({
-              value: l.playerId,
-              label: `${l.shirtNumber ? '#' + l.shirtNumber + ' ' : ''}${l.playerName ?? `Игрок ${l.playerId}`}`,
-            }))}
-            showSearch
-            filterOption={(input, opt) => (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
-          />
+          {outgoingOptions.length === 0 ? (
+            <Text type="secondary">Нет игроков в команде</Text>
+          ) : (
+            <Select
+              placeholder={hasLineup ? 'Игрок из расстановки' : 'Любой игрок команды'}
+              options={outgoingOptions}
+              showSearch
+              filterOption={(input, opt) => (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
+              onChange={(v: number) => {
+                setSelectedSubOutId(v);
+                form.setFieldValue('subInPlayerId', undefined);
+              }}
+            />
+          )}
         </Form.Item>
 
         {/* входящий игрок */}
         <Form.Item name="subInPlayerId" label="Входящий (со скамейки)" rules={[{ required: true, message: 'Выберите игрока' }]}>
-          {benchPlayers.length === 0 ? (
-            <Text type="secondary">Нет доступных игроков на скамейке</Text>
+          {incomingOptions.length === 0 ? (
+            <Text type="secondary">
+              {selectedSubOutId ? 'Нет доступных игроков' : 'Сначала выберите уходящего игрока'}
+            </Text>
           ) : (
             <Select
-              placeholder="Игрок со скамейки"
-              options={benchPlayers.map(p => ({
-                value: p.id,
-                label: `${p.shirtNumber ? '#' + p.shirtNumber + ' ' : ''}${p.fullName ?? p.lastName}`,
-              }))}
+              placeholder={hasLineup ? 'Игрок со скамейки' : 'Любой другой игрок команды'}
+              options={incomingOptions}
               showSearch
               filterOption={(input, opt) => (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
             />
@@ -148,7 +195,7 @@ const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
           <Button onClick={handleCancel}>Отмена</Button>
-          <Button type="primary" onClick={handleOk} disabled={benchPlayers.length === 0 && currentLineup.length === 0}>
+          <Button type="primary" onClick={handleOk} disabled={!canSubmit}>
             Подтвердить замену
           </Button>
         </div>

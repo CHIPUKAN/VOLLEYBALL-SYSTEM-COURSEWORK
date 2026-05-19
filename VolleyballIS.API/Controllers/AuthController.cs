@@ -29,6 +29,33 @@ namespace VolleyballIS.API.Controllers
         #endregion
 
         #region Методы
+        [HttpPost("register")]
+        [AllowAnonymous]
+        public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterDto dto) // самостоятельная регистрация
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            string[] allowedRoles = ["Тренер", "Игрок", "Судья", "Организатор", "Зритель"];
+            if (!allowedRoles.Contains(dto.Role))
+            {
+                dto.Role = "Зритель";
+            }
+
+            try
+            {
+                UserDto created = await authService.RegisterAsync(dto);
+                string token = GenerateJwtToken(created);
+                return Ok(new AuthResponseDto { Token = token, User = created });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+        }
+
         [HttpPost("login")]
         [AllowAnonymous]
         public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto dto) // вход в систему

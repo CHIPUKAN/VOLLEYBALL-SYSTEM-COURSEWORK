@@ -58,12 +58,10 @@ export interface Team {
   regionOktmo: string;
   regionName?: string;
   headCoachId?: number;
-  headCoachName?: string;
+  headCoachFullName?: string;
   homeVenueId?: number;
   homeVenueName?: string;
-  foundedYear?: number;
-  contactEmail?: string;
-  contactPhone?: string;
+  homeVenueCity?: string;
 }
 
 // площадки
@@ -73,10 +71,6 @@ export interface Venue {
   city: string;
   address?: string;
   capacity?: number;
-  regionOktmo?: string;
-  regionName?: string;
-  contactEmail?: string;
-  contactPhone?: string;
 }
 
 // тренеры
@@ -86,10 +80,7 @@ export interface Coach {
   firstName: string;
   middleName?: string;
   fullName?: string;
-  birthDate?: string;
   category?: string;
-  licenseNumber?: string;
-  licenseExpiry?: string;
   email?: string;
   phone?: string;
 }
@@ -97,22 +88,24 @@ export interface Coach {
 // игроки
 export interface Player {
   id: number;
-  teamId: number;
+  teamId?: number;
   teamName?: string;
   lastName: string;
   firstName: string;
   middleName?: string;
   fullName?: string;
   birthDate?: string;
+  heightCm?: number;
+  weightKg?: number;
+  jerseyNumber?: number;
   ampluaCode: number;
   ampluaName?: string;
+  sportsRank?: string;
+  email?: string;
+  phone?: string;
   statusCode: number;
   statusName?: string;
-  shirtNumber?: number;
-  height?: number;
-  weight?: number;
-  licenseNumber?: string;
-  licenseExpiry?: string;
+  photoUrl?: string;
 }
 
 // сезоны
@@ -121,7 +114,7 @@ export interface Season {
   name: string;
   startDate: string;
   endDate: string;
-  isActive: boolean;
+  status: string; // "активен" | "завершён" | "планируемый"
 }
 
 // организаторы
@@ -133,7 +126,6 @@ export interface Organizer {
   fullName?: string;
   email?: string;
   phone?: string;
-  organization?: string;
 }
 
 // судьи
@@ -145,7 +137,6 @@ export interface Referee {
   fullName?: string;
   category?: string;
   licenseNumber?: string;
-  licenseExpiry?: string;
   email?: string;
   phone?: string;
 }
@@ -153,22 +144,25 @@ export interface Referee {
 // турниры
 export interface Tournament {
   id: number;
-  seasonId: number;
+  seasonId?: number;
   seasonName?: string;
-  organizerId: number;
-  organizerName?: string;
+  organizerId?: number;
+  organizerFullName?: string;
   name: string;
   startDate: string;
   endDate: string;
-  city?: string;
-  venueId?: number;
-  venueName?: string;
+  applicationDeadline?: string;
+  city: string;
+  description?: string;
+  maxTeams?: number;
+  gender: string;
+  ageCategory?: string;
+  level: string;
+  maxPlayersPerApp: number;
   formatCode: number;
   formatName?: string;
   scoringSystemCode: number;
   scoringSystemName?: string;
-  maxTeams?: number;
-  description?: string;
 }
 
 // группы
@@ -272,7 +266,7 @@ export interface SetDto {
 export interface PlayerStats {
   matchId: number;
   playerId: number;
-  playerName?: string;
+  playerFullName?: string;
   teamId: number;
   teamName?: string;
   servesTotal: number;
@@ -295,7 +289,7 @@ export interface StartingLineup {
   setNumber: number;
   positionNo: number;
   playerId: number;
-  playerName?: string;
+  playerFullName?: string;
   shirtNumber?: number;
 }
 
@@ -309,7 +303,7 @@ export interface MatchEvent {
   teamId?: number;
   teamName?: string;
   playerId?: number;
-  playerName?: string;
+  playerFullName?: string;
   homeScoreAtMoment: number;
   guestScoreAtMoment: number;
   minuteMark?: number;
@@ -341,7 +335,7 @@ export interface Sanction {
   teamId: number;
   teamName?: string;
   playerId?: number;
-  playerName?: string;
+  playerFullName?: string;
   recipientTypeCode: number;
   recipientTypeName?: string;
   sanctionTypeCode: number;
@@ -357,14 +351,13 @@ export interface Award {
   id: number;
   tournamentId: number;
   tournamentName?: string;
-  teamId?: number;
-  teamName?: string;
-  playerId?: number;
-  playerName?: string;
   awardTypeCode: number;
   awardTypeName?: string;
-  title: string;
-  description?: string;
+  name: string;
+  playerId?: number;
+  playerFullName?: string;
+  teamId?: number;
+  teamName?: string;
 }
 
 // капитаны
@@ -373,7 +366,7 @@ export interface MatchCaptain {
   teamId: number;
   teamName?: string;
   playerId: number;
-  playerName?: string;
+  playerFullName?: string;
 }
 
 // делегации
@@ -385,6 +378,21 @@ export interface Delegation {
   personName: string;
   role: string;
   isCoach: boolean;
+}
+
+// турнирная таблица
+export interface StandingRow {
+  rank: number;
+  teamId: number;
+  teamName: string;
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  setsWon: number;
+  setsLost: number;
+  pointsWon: number;
+  pointsLost: number;
+  points: number;
 }
 
 // live-матч: состояние

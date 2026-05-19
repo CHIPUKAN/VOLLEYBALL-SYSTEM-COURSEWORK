@@ -474,6 +474,8 @@ const MatchDetailPage: React.FC = () => {
   const handleSaveStat = async () => {
     let values: Record<string, unknown>;
     try { values = await statsForm.validateFields(); } catch { return; }
+    // вычисляем итоговые очки автоматически
+    values.totalPoints = (Number(values.aces) || 0) + (Number(values.attackPoints) || 0) + (Number(values.blocks) || 0);
     setSavingStat(true);
     try {
       await playerStatsApi.upsert(matchId, { matchId, ...values });
@@ -519,7 +521,7 @@ const MatchDetailPage: React.FC = () => {
     { title: '№', dataIndex: 'seqInMatch', key: 'seqInMatch', width: 60 },
     { title: 'Тип', dataIndex: 'eventTypeName', key: 'eventTypeName', render: (v: string, r: MatchEvent) => v ?? r.eventTypeCode },
     { title: 'Команда', dataIndex: 'teamName', key: 'teamName', render: (v: string) => v ?? '—' },
-    { title: 'Игрок', dataIndex: 'playerName', key: 'playerName', render: (v: string) => v ?? '—' },
+    { title: 'Игрок', dataIndex: 'playerFullName', key: 'playerFullName', render: (v: string) => v ?? '—' },
     { title: 'Счёт', key: 'score', render: (_: unknown, r: MatchEvent) => `${r.homeScoreAtMoment}:${r.guestScoreAtMoment}` },
     { title: 'Мин.', dataIndex: 'minuteMark', key: 'minuteMark', width: 60, render: (v: number) => v ?? '—' },
     {
@@ -533,7 +535,7 @@ const MatchDetailPage: React.FC = () => {
 
   const sanctionsColumns: ColumnsType<Sanction> = [
     { title: 'Команда', dataIndex: 'teamName', key: 'teamName', render: (v: string) => v ?? '—' },
-    { title: 'Игрок', dataIndex: 'playerName', key: 'playerName', render: (v: string) => v ?? '—' },
+    { title: 'Игрок', dataIndex: 'playerFullName', key: 'playerFullName', render: (v: string) => v ?? '—' },
     { title: 'Тип', dataIndex: 'sanctionTypeName', key: 'sanctionTypeName', render: (v: string, r: Sanction) => v ?? r.sanctionTypeCode },
     { title: 'Вид', dataIndex: 'sanctionKindName', key: 'sanctionKindName', render: (v: string) => v ?? '—' },
     { title: 'Партия', dataIndex: 'setNumber', key: 'setNumber', render: (v: number) => v ?? '—' },
@@ -583,7 +585,10 @@ const MatchDetailPage: React.FC = () => {
   ];
 
   const statsColumns: ColumnsType<PlayerStats> = [
-    { title: 'Игрок', dataIndex: 'playerName', key: 'playerName', fixed: 'left', width: 140 },
+    {
+      title: 'Игрок', dataIndex: 'playerFullName', key: 'playerFullName', fixed: 'left', width: 140,
+      render: (v: string, r: PlayerStats) => v ?? `Игрок ${r.playerId}`,
+    },
     { title: 'Команда', dataIndex: 'teamName', key: 'teamName', width: 130 },
     { title: 'Подачи', dataIndex: 'servesTotal', key: 'servesTotal', width: 80 },
     { title: 'Эйсы', dataIndex: 'aces', key: 'aces', width: 70 },
@@ -792,6 +797,17 @@ const MatchDetailPage: React.FC = () => {
                     size="small"
                     scroll={{ x: 'max-content' }}
                     locale={{ emptyText: 'Статистика не введена' }}
+                    onRow={rec => ({
+                      onClick: () => {
+                        setRadarStatsA(rec);
+                        setRadarStatsB(null);
+                        setRadarPlayerAId(rec.playerId);
+                        setRadarPlayerBId(undefined);
+                        setRadarCompareOpen(true);
+                      },
+                      style: { cursor: 'pointer' },
+                      title: 'Нажмите для просмотра радар-диаграммы',
+                    })}
                   />
                 </Spin>
               ),
@@ -1151,15 +1167,30 @@ const MatchDetailPage: React.FC = () => {
           <Row gutter={12}>
             <Col span={12}>
               <Form.Item name="homeScore" label="Партий выиграно (хозяева)" rules={[{ required: true }]}>
-                <InputNumber min={0} max={3} style={{ width: '100%' }} />
+                <InputNumber
+                  min={0}
+                  max={3}
+                  style={{ width: '100%' }}
+                  readOnly={sets.length > 0}
+                />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item name="guestScore" label="Партий выиграно (гости)" rules={[{ required: true }]}>
-                <InputNumber min={0} max={3} style={{ width: '100%' }} />
+                <InputNumber
+                  min={0}
+                  max={3}
+                  style={{ width: '100%' }}
+                  readOnly={sets.length > 0}
+                />
               </Form.Item>
             </Col>
           </Row>
+          {sets.length > 0 && (
+            <Text type="secondary" style={{ display: 'block', marginBottom: 12, fontSize: 12 }}>
+              Счёт вычислен из партий автоматически.
+            </Text>
+          )}
           <Form.Item name="statusCode" label="Статус протокола" rules={[{ required: true }]}>
             <Select options={protocolStatuses.map(s => ({ value: s.code, label: s.name }))} />
           </Form.Item>
@@ -1218,10 +1249,9 @@ const MatchDetailPage: React.FC = () => {
           <Form.Item name="role" label="Роль в делегации" rules={[{ required: true }]}>
             <Input placeholder="Тренер, врач, администратор..." />
           </Form.Item>
-          <Form.Item name="isCoach" label="Является тренером">
+          <Form.Item name="isCoach" label="Является тренером" initialValue={false}>
             <Select
               options={[{ value: true, label: 'Да' }, { value: false, label: 'Нет' }]}
-              defaultValue={false}
             />
           </Form.Item>
         </Form>
@@ -1273,11 +1303,11 @@ const MatchDetailPage: React.FC = () => {
 
       {/* сравнение статистики двух игроков */}
       <Modal
-        title="Сравнение игроков"
+        title={radarPlayerBId !== undefined || (!radarStatsA && !radarPlayerAId) ? 'Сравнение игроков' : (radarStatsA ? `${radarStatsA.playerFullName ?? 'Игрок'} — статистика` : 'Статистика игрока')}
         open={radarCompareOpen}
-        onCancel={() => setRadarCompareOpen(false)}
+        onCancel={() => { setRadarCompareOpen(false); setRadarStatsA(null); setRadarStatsB(null); setRadarPlayerAId(undefined); setRadarPlayerBId(undefined); }}
         footer={null}
-        width={540}
+        width={560}
         destroyOnClose
       >
         <Row gutter={16} style={{ marginBottom: 16 }}>
@@ -1285,24 +1315,30 @@ const MatchDetailPage: React.FC = () => {
             <Select
               placeholder="Игрок A"
               style={{ width: '100%' }}
+              value={radarPlayerAId}
               options={allPlayers.map(p => ({ value: Number(p.id), label: p.name }))}
               onChange={(id: number) => { setRadarPlayerAId(id); loadRadarStats(id, 'A'); }}
+              allowClear
+              onClear={() => { setRadarPlayerAId(undefined); setRadarStatsA(null); }}
               showSearch
               filterOption={(input, opt) => (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
             />
           </Col>
           <Col span={12}>
             <Select
-              placeholder="Игрок B"
+              placeholder="Игрок B (для сравнения)"
               style={{ width: '100%' }}
+              value={radarPlayerBId}
               options={allPlayers.map(p => ({ value: Number(p.id), label: p.name }))}
               onChange={(id: number) => { setRadarPlayerBId(id); loadRadarStats(id, 'B'); }}
+              allowClear
+              onClear={() => { setRadarPlayerBId(undefined); setRadarStatsB(null); }}
               showSearch
               filterOption={(input, opt) => (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
             />
           </Col>
         </Row>
-        {radarStatsA && (
+        {radarStatsA ? (
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <PlayerRadarChart
               stats={radarStatsA}
@@ -1310,9 +1346,10 @@ const MatchDetailPage: React.FC = () => {
               size={280}
             />
           </div>
-        )}
-        {!radarStatsA && radarPlayerAId && (
-          <Text type="secondary">Нет статистики для выбранного игрока A</Text>
+        ) : (
+          <Text type="secondary">
+            {radarPlayerAId ? 'Нет статистики для выбранного игрока' : 'Выберите игрока для просмотра статистики'}
+          </Text>
         )}
       </Modal>
 
@@ -1338,6 +1375,12 @@ const MatchDetailPage: React.FC = () => {
                   showSearch
                   filterOption={(input, opt) => (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
                   placeholder="Выберите игрока"
+                  onChange={(pid: number) => {
+                    if (!editStat) {
+                      const isHome = homePlayers.some(p => Number(p.id) === pid);
+                      statsForm.setFieldValue('teamId', isHome ? match.homeTeamId : match.guestTeamId);
+                    }
+                  }}
                 />
               </Form.Item>
             </Col>
@@ -1365,7 +1408,6 @@ const MatchDetailPage: React.FC = () => {
               { name: 'attackPoints', label: 'Очки атак' },
               { name: 'attackErrors', label: 'Ошибки атак' },
               { name: 'blocks', label: 'Блоки' },
-              { name: 'totalPoints', label: 'Очков итого' },
             ].map(f => (
               <Col xs={12} sm={8} key={f.name}>
                 <Form.Item name={f.name} label={f.label} initialValue={0}>
@@ -1373,6 +1415,30 @@ const MatchDetailPage: React.FC = () => {
                 </Form.Item>
               </Col>
             ))}
+            <Col xs={12} sm={8}>
+              <Form.Item
+                label="Очков итого (авто)"
+                shouldUpdate={(prev, curr) =>
+                  prev.aces !== curr.aces ||
+                  prev.attackPoints !== curr.attackPoints ||
+                  prev.blocks !== curr.blocks
+                }
+              >
+                {({ getFieldValue }) => {
+                  const total =
+                    (getFieldValue('aces') || 0) +
+                    (getFieldValue('attackPoints') || 0) +
+                    (getFieldValue('blocks') || 0);
+                  return (
+                    <Input
+                      value={total}
+                      readOnly
+                      style={{ width: '100%', background: '#f5f5f5', cursor: 'default' }}
+                    />
+                  );
+                }}
+              </Form.Item>
+            </Col>
           </Row>
         </Form>
       </Modal>

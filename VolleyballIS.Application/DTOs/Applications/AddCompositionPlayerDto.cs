@@ -9,12 +9,10 @@ namespace VolleyballIS.Application.DTOs.Applications
         [Required(ErrorMessage = "Идентификатор игрока обязателен")]
         public int PlayerId { get; set; } // идентификатор игрока
 
-        [Required(ErrorMessage = "Номер в заявке обязателен")]
         [Range(1, 99, ErrorMessage = "Номер должен быть от 1 до 99")]
-        public short JerseyNumberInApp { get; set; } // номер игрока в заявке
+        public short? ShirtNumber { get; set; } // номер игрока в заявке (необязателен)
 
-        [MaxLength(10)]
-        public string Role { get; set; } = "основной"; // роль: «основной» или «запасной»
+        public int? AmpluaCode { get; set; } // код амплуа (необязателен)
 
         public bool IsLibero { get; set; } = false; // признак либеро
         #endregion

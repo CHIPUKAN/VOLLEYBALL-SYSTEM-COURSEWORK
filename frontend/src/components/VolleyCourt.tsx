@@ -83,8 +83,8 @@ const VolleyCourt: React.FC<VolleyCourtProps> = ({
         const rest = prev.filter(l => !(l.teamId === teamId && l.positionNo === positionNo));
         return [...rest, {
           matchId, teamId, setNumber, positionNo, playerId,
-          playerName: player?.fullName ?? `#${playerId}`,
-          shirtNumber: player?.shirtNumber,
+          playerFullName: player?.fullName ?? `#${playerId}`,
+          shirtNumber: player?.jerseyNumber,
         }];
       });
     } catch {
@@ -159,7 +159,7 @@ const VolleyCourt: React.FC<VolleyCourtProps> = ({
                 {lineup.shirtNumber ? `#${lineup.shirtNumber}` : ''}
               </Text>
               <Text style={{ fontSize: 10, color: '#ffffffcc', textAlign: 'center', lineHeight: 1.2 }}>
-                {lineup.playerName ?? `Игрок ${lineup.playerId}`}
+                {lineup.playerFullName ?? `Игрок ${lineup.playerId}`}
               </Text>
               {!readonly && (
                 <CloseCircleOutlined
@@ -175,7 +175,7 @@ const VolleyCourt: React.FC<VolleyCourtProps> = ({
               style={{ width: 90, fontSize: 10 }}
               options={available.map(p => ({
                 value: p.id,
-                label: `${p.shirtNumber ? '#' + p.shirtNumber + ' ' : ''}${p.fullName ?? p.lastName}`,
+                label: `${p.jerseyNumber ? '#' + p.jerseyNumber + ' ' : ''}${p.fullName ?? p.lastName}`,
               }))}
               onChange={(val) => assignPlayer(teamId, pos, val)}
               showSearch
@@ -211,10 +211,10 @@ const VolleyCourt: React.FC<VolleyCourtProps> = ({
         <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 10 }}>
           <div style={halfStyle}>
             <div style={rowStyle}>
-              {FRONT_POSITIONS.map(pos => renderSlot(homeTeamId, pos))}
+              {BACK_POSITIONS.map(pos => renderSlot(homeTeamId, pos))}
             </div>
             <div style={rowStyle}>
-              {BACK_POSITIONS.map(pos => renderSlot(homeTeamId, pos))}
+              {FRONT_POSITIONS.map(pos => renderSlot(homeTeamId, pos))}
             </div>
           </div>
         </div>
@@ -230,11 +230,10 @@ const VolleyCourt: React.FC<VolleyCourtProps> = ({
         <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 10 }}>
           <div style={halfStyle}>
             <div style={rowStyle}>
-              {/* гости стоят зеркально: их позиция 2 (правый передний) у сетки */}
-              {[2, 3, 4].map(pos => renderSlot(guestTeamId, pos))}
+              {[1, 6, 5].map(pos => renderSlot(guestTeamId, pos))}
             </div>
             <div style={rowStyle}>
-              {[1, 6, 5].map(pos => renderSlot(guestTeamId, pos))}
+              {[2, 3, 4].map(pos => renderSlot(guestTeamId, pos))}
             </div>
           </div>
         </div>

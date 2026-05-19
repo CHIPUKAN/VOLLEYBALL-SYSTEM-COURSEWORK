@@ -73,10 +73,11 @@ const SeasonsPage: React.FC = () => {
 
   const handleEdit = (record: Season) => {
     setEditRecord(record);
+    const statusKey = record.status === 'активен' ? 'active' : record.status === 'планируемый' ? 'planned' : 'finished';
     form.setFieldsValue({
       name: record.name,
       dates: [dayjs(record.startDate), dayjs(record.endDate)],
-      isActive: record.isActive ? 'active' : 'finished',
+      statusKey,
     });
     setModalOpen(true);
   };
@@ -98,13 +99,13 @@ const SeasonsPage: React.FC = () => {
     } catch {
       return;
     }
-    // разбираем диапазон дат
     const dates = values.dates as [dayjs.Dayjs, dayjs.Dayjs];
+    const statusKeyMap: Record<string, string> = { active: 'активен', planned: 'планируемый', finished: 'завершён' };
     const payload: Partial<Season> = {
       name: values.name as string,
       startDate: dates[0].format('YYYY-MM-DD'),
       endDate: dates[1].format('YYYY-MM-DD'),
-      isActive: values.isActive === 'active',
+      status: statusKeyMap[values.statusKey as string] ?? 'завершён',
     };
     setSaving(true);
     try {
@@ -146,10 +147,10 @@ const SeasonsPage: React.FC = () => {
     },
     {
       title: 'Статус',
-      dataIndex: 'isActive',
-      key: 'isActive',
-      render: (isActive: boolean) => {
-        const key = isActive ? 'active' : 'finished';
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: string) => {
+        const key = status === 'активен' ? 'active' : status === 'планируемый' ? 'planned' : 'finished';
         return <Tag color={STATUS_COLORS[key]}>{STATUS_LABELS[key]}</Tag>;
       },
     },
@@ -226,7 +227,7 @@ const SeasonsPage: React.FC = () => {
           >
             <RangePicker style={{ width: '100%' }} format="DD.MM.YYYY" />
           </Form.Item>
-          <Form.Item name="isActive" label="Статус" initialValue="active">
+          <Form.Item name="statusKey" label="Статус" initialValue="active">
             <Select options={SEASON_STATUSES} />
           </Form.Item>
         </Form>

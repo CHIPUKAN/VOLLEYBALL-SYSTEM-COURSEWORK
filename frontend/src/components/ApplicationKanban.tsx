@@ -13,9 +13,9 @@ interface ApplicationKanbanProps {
 }
 
 const COLUMNS = [
-  { statusName: 'На рассмотрении', color: '#378ADD', bgColor: '#E6F1FB' },
-  { statusName: 'Принята',         color: '#3B6D11', bgColor: '#EAF3DE' },
-  { statusName: 'Отклонена',       color: '#A32D2D', bgColor: '#FCEBEB' },
+  { statusCode: 1, statusName: 'На рассмотрении', color: '#378ADD', bgColor: '#E6F1FB' },
+  { statusCode: 2, statusName: 'Принята',         color: '#3B6D11', bgColor: '#EAF3DE' },
+  { statusCode: 3, statusName: 'Отклонена',       color: '#A32D2D', bgColor: '#FCEBEB' },
 ];
 
 // kanban заявок на турниры
@@ -27,37 +27,34 @@ const ApplicationKanban: React.FC<ApplicationKanbanProps> = ({
 }) => {
   const { message } = App.useApp();
   const navigate = useNavigate();
-  const [dragOverCol, setDragOverCol] = useState<string | null>(null);
-  const [optimistic, setOptimistic] = useState<Map<number, string>>(new Map());
+  const [dragOverCol, setDragOverCol] = useState<number | null>(null);
+  const [optimistic, setOptimistic] = useState<Map<number, number>>(new Map());
   const [rejectModal, setRejectModal] = useState<{ appId: number; teamName: string; tournamentId: number } | null>(null);
   const [rejectComment, setRejectComment] = useState('');
 
-  const getStatusName = (app: Application) =>
-    optimistic.get(app.id) ?? app.statusName ?? '';
+  const getStatusCode = (app: Application): number =>
+    optimistic.get(app.id) ?? app.statusCode;
 
-  const handleDrop = async (e: React.DragEvent, targetStatusName: string) => {
+  const handleDrop = async (e: React.DragEvent, targetStatusCode: number, targetStatusName: string) => {
     e.preventDefault();
     setDragOverCol(null);
     if (!canReview) return;
 
     const appId = Number(e.dataTransfer.getData('appId'));
     const app = applications.find(a => a.id === appId);
-    if (!app || getStatusName(app) === targetStatusName) return;
+    if (!app || getStatusCode(app) === targetStatusCode) return;
 
-    const targetStatus = statuses.find(s => s.name === targetStatusName);
-    if (!targetStatus) return;
-
-    if (targetStatusName === 'Отклонена') {
+    if (targetStatusCode === 3) {
       setRejectModal({ appId, teamName: app.teamName ?? '?', tournamentId: app.tournamentId });
       setRejectComment('');
       return;
     }
 
-    setOptimistic(prev => new Map(prev).set(appId, targetStatusName));
+    setOptimistic(prev => new Map(prev).set(appId, targetStatusCode));
     try {
-      await onStatusChange(appId, targetStatus.code);
+      await onStatusChange(appId, targetStatusCode);
 
-      if (targetStatusName === 'Принята') {
+      if (targetStatusCode === 2) {
         Modal.confirm({
           title: 'Заявка одобрена!',
           content: `Назначить матч для команды ${app.teamName ?? '?'} в этом турнире?`,
@@ -74,11 +71,9 @@ const ApplicationKanban: React.FC<ApplicationKanbanProps> = ({
 
   const confirmReject = async () => {
     if (!rejectModal) return;
-    const rejectedStatus = statuses.find(s => s.name === 'Отклонена');
-    if (!rejectedStatus) return;
-    setOptimistic(prev => new Map(prev).set(rejectModal.appId, 'Отклонена'));
+    setOptimistic(prev => new Map(prev).set(rejectModal.appId, 3));
     try {
-      await onStatusChange(rejectModal.appId, rejectedStatus.code, rejectComment);
+      await onStatusChange(rejectModal.appId, 3, rejectComment);
     } catch {
       setOptimistic(prev => { const next = new Map(prev); next.delete(rejectModal.appId); return next; });
       message.error('Ошибка отклонения');
@@ -90,15 +85,15 @@ const ApplicationKanban: React.FC<ApplicationKanbanProps> = ({
     <>
       <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8 }}>
         {COLUMNS.map(col => {
-          const colApps = applications.filter(a => getStatusName(a) === col.statusName);
-          const isOver = dragOverCol === col.statusName;
+          const colApps = applications.filter(a => getStatusCode(a) === col.statusCode);
+          const isOver = dragOverCol === col.statusCode;
 
           return (
             <div
-              key={col.statusName}
-              onDragOver={e => { e.preventDefault(); setDragOverCol(col.statusName); }}
+              key={col.statusCode}
+              onDragOver={e => { e.preventDefault(); setDragOverCol(col.statusCode); }}
               onDragLeave={() => setDragOverCol(null)}
-              onDrop={e => handleDrop(e, col.statusName)}
+              onDrop={e => handleDrop(e, col.statusCode, col.statusName)}
               style={{
                 minWidth: 240,
                 width: 240,

@@ -97,6 +97,9 @@ const TournamentsPage: React.FC = () => {
       scoringSystemCode: record.scoringSystemCode,
       maxTeams: record.maxTeams,
       description: record.description,
+      gender: record.gender,
+      level: record.level,
+      maxPlayersPerApp: record.maxPlayersPerApp,
     });
     setModalOpen(true);
   };
@@ -130,6 +133,9 @@ const TournamentsPage: React.FC = () => {
       scoringSystemCode: values.scoringSystemCode as number,
       maxTeams: values.maxTeams as number,
       description: values.description as string,
+      gender: values.gender as string,
+      level: values.level as string,
+      maxPlayersPerApp: (values.maxPlayersPerApp as number) ?? 12,
     };
     setSaving(true);
     try {
@@ -183,8 +189,8 @@ const TournamentsPage: React.FC = () => {
     },
     {
       title: 'Организатор',
-      dataIndex: 'organizerName',
-      key: 'organizerName',
+      dataIndex: 'organizerFullName',
+      key: 'organizerFullName',
       render: (v: string) => v ?? '—',
     },
     {
@@ -370,6 +376,41 @@ const TournamentsPage: React.FC = () => {
             <Col xs={24} sm={8}>
               <Form.Item name="maxTeams" label="Макс. команд">
                 <InputNumber min={2} max={256} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col xs={24} sm={8}>
+              <Form.Item name="gender" label="Пол участников" rules={[{ required: true, message: 'Выберите пол' }]} initialValue="мужской">
+                <Select
+                  options={[
+                    { value: 'мужской', label: 'Мужской' },
+                    { value: 'женский', label: 'Женский' },
+                    { value: 'смешанный', label: 'Смешанный' },
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item name="level" label="Уровень турнира" rules={[{ required: true, message: 'Выберите уровень' }]} initialValue="региональный">
+                <Select
+                  options={[
+                    { value: 'международный', label: 'Международный' },
+                    { value: 'национальный', label: 'Национальный' },
+                    { value: 'региональный', label: 'Региональный' },
+                    { value: 'местный', label: 'Местный' },
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item name="maxPlayersPerApp" label="Игроков в заявке" initialValue={12}>
+                <Select
+                  options={[
+                    { value: 12, label: '12' },
+                    { value: 14, label: '14' },
+                  ]}
+                />
               </Form.Item>
             </Col>
           </Row>

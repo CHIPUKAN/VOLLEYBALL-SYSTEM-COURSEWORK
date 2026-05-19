@@ -24,6 +24,7 @@ import {
   ThunderboltOutlined,
   GiftOutlined,
   FileTextOutlined,
+  OrderedListOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   LogoutOutlined,
@@ -103,6 +104,11 @@ const menuItems: MenuProps['items'] = [
     icon: <FileTextOutlined />,
     label: 'Заявки',
   },
+  {
+    key: '/standings',
+    icon: <OrderedListOutlined />,
+    label: 'Таблица',
+  },
 ];
 
 // основной макет приложения
@@ -143,10 +149,6 @@ const MainLayout: React.FC = () => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <LiveTicker />
-
-          {/* боковая панель */}
-
       <Sider
         breakpoint="lg"
         collapsedWidth={0}
@@ -216,6 +218,8 @@ const MainLayout: React.FC = () => {
           transition: 'margin-left 0.2s',
         }}
       >
+        <LiveTicker />
+
               {/* заголовок*/}
 
         <Header

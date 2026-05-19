@@ -88,7 +88,7 @@ const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
   };
 
   const playerLabel = player
-    ? `#${player.shirtNumber ?? '?'} ${playerFullName ?? player.playerName ?? ''}`
+    ? `#${player.shirtNumber ?? '?'} ${playerFullName ?? player.playerFullName ?? ''}`
     : '';
 
   return (

@@ -19,6 +19,7 @@ import MatchesPage from './pages/MatchesPage';
 import MatchDetailPage from './pages/MatchDetailPage';
 import AwardsPage from './pages/AwardsPage';
 import ApplicationsPage from './pages/ApplicationsPage';
+import StandingsPage from './pages/StandingsPage';
 
 // компонент защищённого маршрута
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -59,6 +60,7 @@ const App: React.FC = () => {
         <Route path="matches/:id" element={<MatchDetailPage />} />
         <Route path="awards" element={<AwardsPage />} />
         <Route path="applications" element={<ApplicationsPage />} />
+        <Route path="standings" element={<StandingsPage />} />
       </Route>
 
       {/* перенаправление неизвестных маршрутов */}

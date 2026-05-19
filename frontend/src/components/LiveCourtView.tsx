@@ -66,7 +66,7 @@ const LiveCourtView: React.FC<LiveCourtViewProps> = ({
       );
     }
 
-    const lastName = (lineup.playerName ?? '').split(' ').slice(0, 2).join(' ');
+    const lastName = (lineup.playerFullName ?? '').split(' ').slice(0, 2).join(' ');
 
     return (
       <div key={key} style={{ position: 'relative', display: 'inline-block' }}>
@@ -160,10 +160,10 @@ const LiveCourtView: React.FC<LiveCourtViewProps> = ({
       <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 10 }}>
         <div style={halfStyle}>
           <div style={rowStyle}>
-            {FRONT_POSITIONS_HOME.map(pos => renderSlot(homeTeamId, pos))}
+            {BACK_POSITIONS_HOME.map(pos => renderSlot(homeTeamId, pos))}
           </div>
           <div style={rowStyle}>
-            {BACK_POSITIONS_HOME.map(pos => renderSlot(homeTeamId, pos))}
+            {FRONT_POSITIONS_HOME.map(pos => renderSlot(homeTeamId, pos))}
           </div>
         </div>
       </div>
@@ -175,14 +175,14 @@ const LiveCourtView: React.FC<LiveCourtViewProps> = ({
         <div style={{ flex: 1, height: 4, background: '#fff', borderRadius: 2, opacity: 0.9 }} />
       </div>
 
-      {/* гости (зеркально) */}
+      {/* гости */}
       <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 10 }}>
         <div style={halfStyle}>
           <div style={rowStyle}>
-            {[2, 3, 4].map(pos => renderSlot(guestTeamId, pos))}
+            {[1, 6, 5].map(pos => renderSlot(guestTeamId, pos))}
           </div>
           <div style={rowStyle}>
-            {[1, 6, 5].map(pos => renderSlot(guestTeamId, pos))}
+            {[2, 3, 4].map(pos => renderSlot(guestTeamId, pos))}
           </div>
         </div>
       </div>

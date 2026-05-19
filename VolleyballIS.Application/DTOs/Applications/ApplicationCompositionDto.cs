@@ -8,11 +8,11 @@ namespace VolleyballIS.Application.DTOs.Applications
 
         public int PlayerId { get; set; } // идентификатор игрока
 
-        public string? PlayerFullName { get; set; } // ФИО игрока
+        public string? PlayerName { get; set; } // ФИО игрока
 
-        public short JerseyNumberInApp { get; set; } // номер в заявке
+        public short? ShirtNumber { get; set; } // номер в заявке
 
-        public string Role { get; set; } = string.Empty; // роль: «основной» / «запасной»
+        public string? AmpluaName { get; set; } // роль / амплуа в заявке
 
         public bool IsLibero { get; set; } // признак либеро
         #endregion

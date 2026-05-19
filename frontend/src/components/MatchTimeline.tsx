@@ -74,7 +74,7 @@ const MatchTimeline: React.FC<MatchTimelineProps> = ({
                   return (
                     <Tooltip
                       key={ev.id}
-                      title={`${ev.eventTypeName ?? '?'} — ${ev.playerName ?? ev.teamName ?? '—'} · ${ev.homeScoreAtMoment}:${ev.guestScoreAtMoment}`}
+                      title={`${ev.eventTypeName ?? '?'} — ${ev.playerFullName ?? ev.teamName ?? '—'} · ${ev.homeScoreAtMoment}:${ev.guestScoreAtMoment}`}
                     >
                       <span style={{
                         position: 'absolute',
@@ -108,7 +108,7 @@ const MatchTimeline: React.FC<MatchTimelineProps> = ({
                   return (
                     <Tooltip
                       key={ev.id}
-                      title={`${ev.eventTypeName ?? '?'} — ${ev.playerName ?? ev.teamName ?? '—'} · ${ev.homeScoreAtMoment}:${ev.guestScoreAtMoment}`}
+                      title={`${ev.eventTypeName ?? '?'} — ${ev.playerFullName ?? ev.teamName ?? '—'} · ${ev.homeScoreAtMoment}:${ev.guestScoreAtMoment}`}
                     >
                       <span style={{
                         position: 'absolute',

@@ -65,10 +65,10 @@ const PlayerCard: React.FC<PlayerCardProps> = ({
       }}
     >
       {/* номер рубашки */}
-      {player.shirtNumber && (
+      {player.jerseyNumber && (
         <div style={{ position: 'absolute', top: 8, right: 10 }}>
           <Text style={{ fontSize: 11, color: '#888', fontWeight: 600 }}>
-            #{player.shirtNumber}
+            #{player.jerseyNumber}
           </Text>
         </div>
       )}

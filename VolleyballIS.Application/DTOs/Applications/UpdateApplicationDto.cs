@@ -8,6 +8,8 @@ namespace VolleyballIS.Application.DTOs.Applications
         #region Свойства
         [Required(ErrorMessage = "Код статуса обязателен")]
         public short StatusCode { get; set; } // новый код статуса заявки
+
+        public string? Comment { get; set; } // комментарий (причина отклонения и т.п.)
         #endregion
     }
 }

@@ -10,7 +10,6 @@ import { lookupsApi } from '../api/lookupsApi';
 import type { Award, LookupDto, LookupItemDto } from '../types/index';
 
 const { Title } = Typography;
-const { TextArea } = Input;
 
 // страница управления наградами
 const AwardsPage: React.FC = () => {
@@ -75,8 +74,7 @@ const AwardsPage: React.FC = () => {
     form.setFieldsValue({
       tournamentId: record.tournamentId,
       awardTypeCode: record.awardTypeCode,
-      title: record.title,
-      description: record.description,
+      name: record.name,
       playerId: record.playerId,
       teamId: record.teamId,
     });
@@ -133,14 +131,14 @@ const AwardsPage: React.FC = () => {
     },
     {
       title: 'Название',
-      dataIndex: 'title',
-      key: 'title',
-      sorter: (a, b) => a.title.localeCompare(b.title),
+      dataIndex: 'name',
+      key: 'name',
+      sorter: (a, b) => a.name.localeCompare(b.name),
     },
     {
       title: 'Игрок',
-      dataIndex: 'playerName',
-      key: 'playerName',
+      dataIndex: 'playerFullName',
+      key: 'playerFullName',
       render: (v: string) => v ?? '—',
     },
     {
@@ -241,7 +239,7 @@ const AwardsPage: React.FC = () => {
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="title" label="Название" rules={[{ required: true, message: 'Введите название награды' }]}>
+          <Form.Item name="name" label="Название" rules={[{ required: true, message: 'Введите название награды' }]}>
             <Input placeholder="Лучший игрок турнира" />
           </Form.Item>
           <Row gutter={16}>
@@ -272,9 +270,6 @@ const AwardsPage: React.FC = () => {
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="description" label="Описание">
-            <TextArea rows={2} />
-          </Form.Item>
         </Form>
       </Modal>
     </div>
