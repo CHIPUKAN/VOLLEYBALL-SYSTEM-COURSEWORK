@@ -1,0 +1,6 @@
+@VolleyballIS.API_HostAddress = http://localhost:5285
+
+GET {{VolleyballIS.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,37 @@
+# ── .NET build artifacts ────────────────────────────────────────────────────
+**/bin/
+**/obj/
+*.nupkg
+*.snupkg
+
+# ── IDE / tooling ────────────────────────────────────────────────────────────
+.vs/
+.idea/
+*.suo
+*.user
+*.userprefs
+.vscode/
+
+# ── Sensitive config ─────────────────────────────────────────────────────────
+# appsettings.json содержит реальный пароль БД и JWT-секрет.
+# Закомментируй строку ниже, если хочешь всё же залить файл (не рекомендуется).
+appsettings.json
+appsettings.Development.json
+
+# ── Frontend ──────────────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# ── Env-файлы ────────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Логи и временные файлы ───────────────────────────────────────────────────
+*.log
+*.tmp
+Thumbs.db
+.DS_Store
