@@ -3,11 +3,11 @@ export interface Referee {
   lastName: string;
   firstName: string;
   middleName?: string;
+  fullName?: string;
   category?: string;
   licenseNumber?: string;
   email?: string;
   phone?: string;
-  fullName: string;
 }
 
 export interface CreateRefereeRequest {
@@ -20,4 +20,12 @@ export interface CreateRefereeRequest {
   phone?: string;
 }
 
-export type UpdateRefereeRequest = CreateRefereeRequest;
+export interface UpdateRefereeRequest {
+  lastName: string;
+  firstName: string;
+  middleName?: string;
+  category?: string;
+  licenseNumber?: string;
+  email?: string;
+  phone?: string;
+}

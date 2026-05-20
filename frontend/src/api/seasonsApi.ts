@@ -1,40 +1,51 @@
 import type { Season, CreateSeasonRequest, UpdateSeasonRequest } from '../types/season';
 
-const BASE = '/api/seasons';
+const BASE_URL = '/api/seasons';
 
+// получить все сезоны
 export async function fetchSeasons(): Promise<Season[]> {
-  const r = await fetch(BASE);
-  if (!r.ok) throw new Error('Ошибка при загрузке сезонов');
-  return r.json() as Promise<Season[]>;
+  const response = await fetch(BASE_URL);
+  if (!response.ok) throw new Error('Ошибка при загрузке сезонов');
+  return response.json() as Promise<Season[]>;
 }
 
+// получить сезон по id
+export async function fetchSeasonById(id: number): Promise<Season> {
+  const response = await fetch(`${BASE_URL}/${id}`);
+  if (!response.ok) throw new Error(`Сезон с id=${id} не найден`);
+  return response.json() as Promise<Season>;
+}
+
+// создать сезон
 export async function createSeason(data: CreateSeasonRequest): Promise<Season> {
-  const r = await fetch(BASE, {
+  const response = await fetch(BASE_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!r.ok) {
-    const err = await r.json() as { message?: string };
+  if (!response.ok) {
+    const err = await response.json() as { message?: string };
     throw new Error(err.message ?? 'Ошибка при создании сезона');
   }
-  return r.json() as Promise<Season>;
+  return response.json() as Promise<Season>;
 }
 
+// обновить сезон
 export async function updateSeason(id: number, data: UpdateSeasonRequest): Promise<Season> {
-  const r = await fetch(`${BASE}/${id}`, {
+  const response = await fetch(`${BASE_URL}/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!r.ok) {
-    const err = await r.json() as { message?: string };
+  if (!response.ok) {
+    const err = await response.json() as { message?: string };
     throw new Error(err.message ?? 'Ошибка при обновлении сезона');
   }
-  return r.json() as Promise<Season>;
+  return response.json() as Promise<Season>;
 }
 
+// удалить сезон
 export async function deleteSeason(id: number): Promise<void> {
-  const r = await fetch(`${BASE}/${id}`, { method: 'DELETE' });
-  if (!r.ok) throw new Error(`Ошибка при удалении сезона id=${id}`);
+  const response = await fetch(`${BASE_URL}/${id}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error(`Ошибка при удалении сезона id=${id}`);
 }

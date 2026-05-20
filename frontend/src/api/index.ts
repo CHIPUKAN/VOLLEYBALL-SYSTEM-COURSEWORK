@@ -61,7 +61,7 @@ export const organizersApi = {
   delete: (id: number) => client.delete(`/organizers/${id}`),
 };
 
-// Судьи
+// судьи
 export const refereesApi = {
   getAll: () => client.get<Referee[]>('/referees').then(r => r.data),
   getById: (id: number) => client.get<Referee>(`/referees/${id}`).then(r => r.data),
@@ -106,8 +106,6 @@ export const matchesApi = {
   getById: (id: number) => client.get<Match>(`/matches/${id}`).then(r => r.data),
   create: (data: Partial<Match>) => client.post<Match>('/matches', data).then(r => r.data),
   update: (id: number, data: Partial<Match>) => client.put<Match>(`/matches/${id}`, data).then(r => r.data),
-  updateStatus: (id: number, statusCode: number) =>
-    client.put<Match>(`/matches/${id}`, { statusCode }).then(r => r.data),
   delete: (id: number) => client.delete(`/matches/${id}`),
 };
 

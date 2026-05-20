@@ -14,7 +14,6 @@ interface MatchMiniCourtProps {
 const MatchMiniCourt: React.FC<MatchMiniCourtProps> = ({
   events,
   homeTeamId,
-  guestTeamId,
   homeTeamName,
   guestTeamName,
   size = 80,
@@ -59,7 +58,6 @@ const MatchMiniCourt: React.FC<MatchMiniCourtProps> = ({
       </text>
     </svg>
   );
-  void guestTeamId;
 };
 
 export default MatchMiniCourt;

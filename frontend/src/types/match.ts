@@ -8,6 +8,7 @@ export interface Match {
   guestTeamName?: string;
   matchDate: string;
   startTime: string;
+  endTime?: string;
   venueId: number;
   venueName?: string;
   venueCity?: string;
@@ -17,6 +18,11 @@ export interface Match {
   groupName?: string;
   statusCode: number;
   statusName?: string;
+  techDefeatReason?: string;
+  coinTossWinnerTeamId?: number;
+  coinTossChoiceCode?: number;
+  coinTossChoiceName?: string;
+  firstServeTeamId?: number;
   hasVideoChallenge: boolean;
   netHeight?: number;
 }
@@ -29,10 +35,22 @@ export interface CreateMatchRequest {
   startTime: string;
   venueId: number;
   stageCode: number;
+  statusCode?: number;
   groupId?: number;
-  statusCode: number;
-  hasVideoChallenge: boolean;
+  hasVideoChallenge?: boolean;
   netHeight?: number;
 }
 
-export type UpdateMatchRequest = CreateMatchRequest;
+export interface UpdateMatchRequest {
+  tournamentId: number;
+  homeTeamId: number;
+  guestTeamId: number;
+  matchDate: string;
+  startTime: string;
+  venueId: number;
+  stageCode: number;
+  statusCode?: number;
+  groupId?: number;
+  hasVideoChallenge?: boolean;
+  netHeight?: number;
+}

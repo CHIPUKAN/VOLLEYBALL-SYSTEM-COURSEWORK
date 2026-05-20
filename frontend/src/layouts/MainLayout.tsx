@@ -211,7 +211,7 @@ const MainLayout: React.FC = () => {
         />
       </Sider>
 
-      {/* основное содержимое   */}
+      {/* основное содержимое */}
       <Layout
         style={{
           marginLeft: collapsed ? 0 : 220,
@@ -220,7 +220,7 @@ const MainLayout: React.FC = () => {
       >
         <LiveTicker />
 
-              {/* заголовок*/}
+        {/* заголовок */}
 
         <Header
           style={{
@@ -236,7 +236,7 @@ const MainLayout: React.FC = () => {
             gap: 8,
           }}
         >
-                  {/* кнопка сворачивания сайдбара */}
+          {/* кнопка сворачивания сайдбара */}
 
           <Button
             type="text"
@@ -245,7 +245,7 @@ const MainLayout: React.FC = () => {
             style={{ fontSize: 16, width: 40, height: 40 }}
           />
 
-                  {/* правая часть заголовка */}
+          {/* правая часть заголовка */}
 
           <Space>
             <Dropdown
@@ -268,7 +268,7 @@ const MainLayout: React.FC = () => {
           </Space>
         </Header>
 
-              {/* страница*/}
+        {/* страница */}
 
         <Content
           style={{

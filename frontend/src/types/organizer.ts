@@ -3,9 +3,9 @@ export interface Organizer {
   lastName: string;
   firstName: string;
   middleName?: string;
+  fullName?: string;
   email?: string;
   phone?: string;
-  fullName: string;
 }
 
 export interface CreateOrganizerRequest {
@@ -16,4 +16,10 @@ export interface CreateOrganizerRequest {
   phone?: string;
 }
 
-export type UpdateOrganizerRequest = CreateOrganizerRequest;
+export interface UpdateOrganizerRequest {
+  lastName: string;
+  firstName: string;
+  middleName?: string;
+  email?: string;
+  phone?: string;
+}

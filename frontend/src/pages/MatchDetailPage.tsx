@@ -17,7 +17,7 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import {
   matchesApi, setsApi, eventsApi, sanctionsApi, protocolsApi,
-  refereeAssignmentsApi, delegationsApi, captainsApi, playerStatsApi, playersApi,
+  refereeAssignmentsApi, delegationsApi, captainsApi, playerStatsApi,
 } from '../api/index';
 import { lookupsApi } from '../api/lookupsApi';
 import type {
@@ -29,7 +29,7 @@ import { useAuth } from '../context/AuthContext';
 import VolleyCourt from '../components/VolleyCourt';
 import LiveMatchPanel from '../components/LiveMatchPanel';
 import PreMatchWizard from '../components/PreMatchWizard';
-import type { CoinTossResult, Player } from '../types/index';
+import type { CoinTossResult } from '../types/index';
 
 const { Title, Text } = Typography;
 
@@ -120,8 +120,6 @@ const MatchDetailPage: React.FC = () => {
   const [preWizardOpen, setPreWizardOpen] = useState(false);
   const [coinTossResult, setCoinTossResult] = useState<CoinTossResult | null>(null);
   const [statuses, setStatuses] = useState<LookupDto[]>([]);
-  const [homePlayersFull, setHomePlayersFull] = useState<Player[]>([]);
-  const [guestPlayersFull, setGuestPlayersFull] = useState<Player[]>([]);
 
   // режим событий
   const [eventsView, setEventsView] = useState<'table' | 'timeline'>('table');
@@ -153,18 +151,14 @@ const MatchDetailPage: React.FC = () => {
         const matchData = await matchesApi.getById(matchId);
         setMatch(matchData);
         // сразу загружаем игроков обеих команд
-        const [hp, gp, hpFull, gpFull, statusList] = await Promise.all([
+        const [hp, gp, statusList] = await Promise.all([
           lookupsApi.getPlayers(matchData.homeTeamId),
           lookupsApi.getPlayers(matchData.guestTeamId),
-          playersApi.getAll(matchData.homeTeamId),
-          playersApi.getAll(matchData.guestTeamId),
           lookupsApi.getMatchStatuses(),
         ]);
         setHomePlayers(hp);
         setGuestPlayers(gp);
         setAllPlayers([...hp, ...gp]);
-        setHomePlayersFull(hpFull);
-        setGuestPlayersFull(gpFull);
         setStatuses(statusList);
       } catch {
         message.error('Не удалось загрузить данные матча');
@@ -255,7 +249,7 @@ const MatchDetailPage: React.FC = () => {
     try {
       const statusInProgress = statuses.find(s => s.name === 'В процессе')?.code;
       if (statusInProgress && match) {
-        await matchesApi.update(matchId, { statusCode: statusInProgress });
+        await matchesApi.update(matchId, { ...match, statusCode: statusInProgress });
       }
       setMatch(prev => prev ? { ...prev, statusName: 'В процессе' } : prev);
     } catch { message.error('Не удалось обновить статус матча'); }
@@ -1262,8 +1256,6 @@ const MatchDetailPage: React.FC = () => {
         <PreMatchWizard
           open={preWizardOpen}
           match={match}
-          homePlayers={homePlayersFull}
-          guestPlayers={guestPlayersFull}
           onComplete={handleStartMatch}
           onSkip={() => {
             setPreWizardOpen(false);

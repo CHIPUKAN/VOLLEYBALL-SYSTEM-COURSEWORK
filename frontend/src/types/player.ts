@@ -5,8 +5,8 @@ export interface Player {
   lastName: string;
   firstName: string;
   middleName?: string;
-  fullName: string;
-  birthDate: string;
+  fullName?: string;
+  birthDate?: string;
   heightCm?: number;
   weightKg?: number;
   jerseyNumber?: number;
@@ -25,7 +25,7 @@ export interface CreatePlayerRequest {
   lastName: string;
   firstName: string;
   middleName?: string;
-  birthDate: string;
+  birthDate?: string;
   heightCm?: number;
   weightKg?: number;
   jerseyNumber?: number;
@@ -34,7 +34,20 @@ export interface CreatePlayerRequest {
   email?: string;
   phone?: string;
   statusCode: number;
-  photoUrl?: string;
 }
 
-export type UpdatePlayerRequest = CreatePlayerRequest;
+export interface UpdatePlayerRequest {
+  teamId?: number;
+  lastName: string;
+  firstName: string;
+  middleName?: string;
+  birthDate?: string;
+  heightCm?: number;
+  weightKg?: number;
+  jerseyNumber?: number;
+  ampluaCode: number;
+  sportsRank?: string;
+  email?: string;
+  phone?: string;
+  statusCode: number;
+}

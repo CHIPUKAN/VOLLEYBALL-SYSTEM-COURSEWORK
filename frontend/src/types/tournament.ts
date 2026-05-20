@@ -39,4 +39,20 @@ export interface CreateTournamentRequest {
   scoringSystemCode: number;
 }
 
-export type UpdateTournamentRequest = CreateTournamentRequest;
+export interface UpdateTournamentRequest {
+  seasonId?: number;
+  organizerId?: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+  applicationDeadline?: string;
+  city: string;
+  description?: string;
+  maxTeams?: number;
+  gender: string;
+  ageCategory?: string;
+  level: string;
+  maxPlayersPerApp: number;
+  formatCode: number;
+  scoringSystemCode: number;
+}

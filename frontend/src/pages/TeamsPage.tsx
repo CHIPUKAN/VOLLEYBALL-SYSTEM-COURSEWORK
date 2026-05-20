@@ -245,7 +245,7 @@ const TeamsPage: React.FC = () => {
     if (!player || player.teamId === targetTeamId) return;
 
     try {
-      await playersApi.update(playerId, { teamId: targetTeamId });
+      await playersApi.update(playerId, { ...player, teamId: targetTeamId });
       message.success('Игрок переведён в другую команду');
       loadPlayers();
     } catch {

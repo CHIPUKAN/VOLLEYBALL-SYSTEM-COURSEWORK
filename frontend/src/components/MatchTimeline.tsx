@@ -46,7 +46,6 @@ const MatchTimeline: React.FC<MatchTimelineProps> = ({
         const setData = sets.find(s => s.setNumber === setNum);
         const total = setEvents.length || 1;
 
-        const homeEvents = setEvents.filter(e => e.teamId !== undefined);
         const guestTeamId = setEvents.find(e => e.teamId)?.teamId;
 
         return (
@@ -138,7 +137,6 @@ const MatchTimeline: React.FC<MatchTimelineProps> = ({
             </div>
           </div>
         );
-        void homeEvents;
       })}
 
       {/* легенда */}

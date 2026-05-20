@@ -13,4 +13,9 @@ export interface CreateSeasonRequest {
   status: string;
 }
 
-export type UpdateSeasonRequest = CreateSeasonRequest;
+export interface UpdateSeasonRequest {
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+}

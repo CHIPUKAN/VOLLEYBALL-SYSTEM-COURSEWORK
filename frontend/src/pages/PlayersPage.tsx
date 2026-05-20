@@ -8,9 +8,8 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { playersApi } from '../api/index';
 import { lookupsApi } from '../api/lookupsApi';
-import type { Player, LookupDto, LookupItemDto, PlayerStats } from '../types/index';
+import type { Player, LookupDto, LookupItemDto } from '../types/index';
 import PlayerCard from '../components/PlayerCard';
-import PlayerRadarChart from '../components/PlayerRadarChart';
 import { useAuth } from '../context/AuthContext';
 
 const { Title } = Typography;
@@ -37,7 +36,6 @@ const PlayersPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [draggedPlayer, setDraggedPlayer] = useState<Player | null>(null);
   const [radarPlayer, setRadarPlayer] = useState<Player | null>(null);
-  const [radarStats, setRadarStats] = useState<PlayerStats | null>(null);
   const [radarOpen, setRadarOpen] = useState(false);
 
   // фильтры
@@ -152,7 +150,6 @@ const PlayersPage: React.FC = () => {
 
   const handlePlayerClick = (player: Player) => {
     setRadarPlayer(player);
-    setRadarStats(null);
     setRadarOpen(true);
   };
 
@@ -165,7 +162,7 @@ const PlayersPage: React.FC = () => {
       cancelText: 'Отмена',
       onOk: async () => {
         try {
-          await playersApi.update(draggedPlayer.id, { teamId });
+          await playersApi.update(draggedPlayer.id, { ...draggedPlayer, teamId });
           message.success('Игрок переведён');
           loadData();
         } catch {
@@ -350,17 +347,32 @@ const PlayersPage: React.FC = () => {
       {/* радар-карта игрока */}
       <Modal
         open={radarOpen}
-        title={radarPlayer ? `${radarPlayer.fullName ?? radarPlayer.lastName} — статистика` : 'Статистика'}
-        onCancel={() => { setRadarOpen(false); setRadarPlayer(null); setRadarStats(null); }}
+        title={radarPlayer ? `${radarPlayer.fullName ?? radarPlayer.lastName}` : 'Игрок'}
+        onCancel={() => { setRadarOpen(false); setRadarPlayer(null); }}
         footer={null}
         width={320}
       >
-        {radarStats ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
-            <PlayerRadarChart stats={radarStats} size={240} />
+        {radarPlayer && (
+          <div style={{ padding: '8px 0' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <tbody>
+                {[
+                  ['Команда', radarPlayer.teamName ?? '—'],
+                  ['Амплуа', radarPlayer.ampluaName ?? '—'],
+                  ['Статус', radarPlayer.statusName ?? '—'],
+                  ['Номер', radarPlayer.jerseyNumber ?? '—'],
+                  ['Рост', radarPlayer.heightCm ? `${radarPlayer.heightCm} см` : '—'],
+                  ['Вес', radarPlayer.weightKg ? `${radarPlayer.weightKg} кг` : '—'],
+                  ['Дата рождения', radarPlayer.birthDate ? dayjs(radarPlayer.birthDate).format('DD.MM.YYYY') : '—'],
+                ].map(([label, value]) => (
+                  <tr key={String(label)}>
+                    <td style={{ padding: '4px 8px', color: '#888', width: '45%' }}>{label}</td>
+                    <td style={{ padding: '4px 8px', fontWeight: 500 }}>{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ) : (
-          <Typography.Text type="secondary">Статистика не найдена</Typography.Text>
         )}
       </Modal>
 

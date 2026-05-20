@@ -199,17 +199,26 @@ const MatchesPage: React.FC = () => {
   };
 
   const handleStatusChange = async (matchId: number, newStatusCode: number) => {
-    await matchesApi.update(matchId, { statusCode: newStatusCode });
+    const match = matches.find(m => m.id === matchId);
+    if (!match) return;
+    await matchesApi.update(matchId, { ...match, statusCode: newStatusCode });
     loadData();
   };
 
   const handleDateDrop = async (matchId: number, newDate: string) => {
+    const match = matches.find(m => m.id === matchId);
+    if (!match) return;
     const postponedStatus = statuses.find(s => s.name === 'Перенесён');
-    await matchesApi.update(matchId, {
-      matchDate: newDate,
-      ...(postponedStatus ? { statusCode: postponedStatus.code } : {}),
-    });
-    loadData();
+    try {
+      await matchesApi.update(matchId, {
+        ...match,
+        matchDate: newDate,
+        ...(postponedStatus ? { statusCode: postponedStatus.code } : {}),
+      });
+      loadData();
+    } catch {
+      message.error('Ошибка переноса матча');
+    }
   };
 
   const columns: ColumnsType<Match> = [

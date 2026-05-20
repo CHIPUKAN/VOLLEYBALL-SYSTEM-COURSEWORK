@@ -3,19 +3,26 @@ export interface Coach {
   lastName: string;
   firstName: string;
   middleName?: string;
+  fullName?: string;
+  category?: string;
   email?: string;
   phone?: string;
-  category?: string;
-  fullName: string;
 }
 
 export interface CreateCoachRequest {
   lastName: string;
   firstName: string;
   middleName?: string;
+  category?: string;
   email?: string;
   phone?: string;
-  category?: string;
 }
 
-export type UpdateCoachRequest = CreateCoachRequest;
+export interface UpdateCoachRequest {
+  lastName: string;
+  firstName: string;
+  middleName?: string;
+  category?: string;
+  email?: string;
+  phone?: string;
+}

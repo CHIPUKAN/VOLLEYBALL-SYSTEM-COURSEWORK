@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -10,7 +10,7 @@ using VolleyballIS.Infrastructure.Repositories;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-// Строка подключения
+// строка подключения
 string connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Строка подключения 'DefaultConnection' не задана в конфигурации");
 
@@ -35,7 +35,7 @@ builder.Services.AddDbContext<VolleyballDbContext>(options =>
     options.UseNpgsql(connectionString);
 });
 
-// WT аутентификация
+// JWT аутентификация
 string jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("JWT Secret не задан в конфигурации");
 
@@ -62,7 +62,7 @@ builder.Services.AddAuthorization(options =>
         .Build();
 });
 
-// Репозитории
+// репозитории
 builder.Services.AddScoped<ITeamRepository, TeamRepository>();
 builder.Services.AddScoped<IVenueRepository, VenueRepository>();
 builder.Services.AddScoped<ICoachRepository, CoachRepository>();
@@ -87,7 +87,7 @@ builder.Services.AddScoped<IDelegationRepository, DelegationRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IProtocolHistoryRepository, ProtocolHistoryRepository>();
 
-// Сервисы
+// сервисы
 builder.Services.AddScoped<ITeamService, TeamService>();
 builder.Services.AddScoped<IVenueService, VenueService>();
 builder.Services.AddScoped<ICoachService, CoachService>();
@@ -113,7 +113,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProtocolHistoryService, ProtocolHistoryService>();
 builder.Services.AddScoped<IStandingService, StandingService>();
 
-// Контроллеры
+// контроллеры
 builder.Services.AddControllers();
 
 // Swagger/OpenAPI с поддержкой JWT
@@ -150,7 +150,7 @@ builder.Services.AddSwaggerGen(options =>
 
 WebApplication app = builder.Build();
 
-// Синхронизация истории миграций и заполнение справочников при старте
+// синхронизация истории миграций и заполнение справочников при старте
 using (IServiceScope scope = app.Services.CreateScope())
 {
     VolleyballDbContext dbContext = scope.ServiceProvider.GetRequiredService<VolleyballDbContext>();

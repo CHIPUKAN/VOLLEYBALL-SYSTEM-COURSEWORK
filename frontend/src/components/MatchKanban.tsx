@@ -245,7 +245,7 @@ const MatchKanbanCard: React.FC<KanbanCardProps> = ({
         </Dropdown>
       </div>
 
-      {isDone && (
+      {isLive && (
         <style>{`@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,122,0,.4)}50%{box-shadow:0 0 0 5px rgba(255,122,0,0)}}`}</style>
       )}
     </div>

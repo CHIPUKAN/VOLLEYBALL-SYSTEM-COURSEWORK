@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Steps, Card, Button, Radio, Space, Typography, Row, Col } from 'antd';
-import type { Match, Player, CoinTossResult } from '../types/index';
+import type { Match, CoinTossResult } from '../types/index';
 import VolleyCourt from './VolleyCourt';
 
 const { Title, Text } = Typography;
@@ -8,14 +8,12 @@ const { Title, Text } = Typography;
 interface PreMatchWizardProps {
   open: boolean;
   match: Match;
-  homePlayers: Player[];
-  guestPlayers: Player[];
   onComplete: (coinToss: CoinTossResult) => void;
   onSkip: () => void;
   onCancel: () => void;
 }
 
-const STEPS = ['Жеребьёвка', 'Расстановка хозяев', 'Расстановка гостей', 'Готовность'];
+const STEPS = ['Жеребьёвка', 'Расстановка', 'Готовность'];
 
 // визард подготовки матча
 const PreMatchWizard: React.FC<PreMatchWizardProps> = ({
@@ -85,12 +83,12 @@ const PreMatchWizard: React.FC<PreMatchWizardProps> = ({
           </Card>
         );
 
-      // шаг 1: расстановка хозяев
+      // шаг 1: расстановка обеих команд
       case 1:
         return (
           <Card>
             <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-              Заполните стартовую расстановку хозяев на Партию 1
+              Заполните стартовую расстановку обеих команд на Партию 1
             </Text>
             <VolleyCourt
               matchId={match.id}
@@ -104,27 +102,8 @@ const PreMatchWizard: React.FC<PreMatchWizardProps> = ({
           </Card>
         );
 
-      // шаг 2: расстановка гостей
+      // шаг 2: готовность
       case 2:
-        return (
-          <Card>
-            <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-              Заполните стартовую расстановку гостей на Партию 1
-            </Text>
-            <VolleyCourt
-              matchId={match.id}
-              homeTeamId={match.homeTeamId}
-              homeTeamName={match.homeTeamName ?? 'Хозяева'}
-              guestTeamId={match.guestTeamId}
-              guestTeamName={match.guestTeamName ?? 'Гости'}
-              setNumber={1}
-              readonly={false}
-            />
-          </Card>
-        );
-
-      // шаг 3: готовность
-      case 3:
         return (
           <Card>
             <Title level={4} style={{ marginBottom: 16 }}>Матч готов к началу</Title>
