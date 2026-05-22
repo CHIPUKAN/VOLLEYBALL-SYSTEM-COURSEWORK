@@ -50,22 +50,18 @@ namespace VolleyballIS.Application.Services
 
         public async Task<OrganizerDto> UpdateOrganizerAsync(int id, UpdateOrganizerDto dto) // обновить организатора
         {
-            bool exists = await organizerRepository.ExistsAsync(id);
-            if (!exists)
+            T13Organizer? existing = await organizerRepository.GetByIdAsync(id);
+            if (existing == null)
             {
                 throw new KeyNotFoundException($"Организатор с идентификатором {id} не найден");
             }
 
-            T13Organizer organizer = new T13Organizer
-            {
-                Id = id,
-                LastName = dto.LastName,
-                FirstName = dto.FirstName,
-                MiddleName = dto.MiddleName,
-                Email = dto.Email,
-                Phone = dto.Phone
-            };
-            T13Organizer updated = await organizerRepository.UpdateAsync(organizer);
+            existing.LastName = dto.LastName;
+            existing.FirstName = dto.FirstName;
+            existing.MiddleName = dto.MiddleName;
+            existing.Email = dto.Email;
+            existing.Phone = dto.Phone;
+            T13Organizer updated = await organizerRepository.UpdateAsync(existing);
             OrganizerDto result = MapToDto(updated);
             return result;
         }

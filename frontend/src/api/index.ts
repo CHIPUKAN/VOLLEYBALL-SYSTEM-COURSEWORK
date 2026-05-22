@@ -101,8 +101,8 @@ export const groupsApi = {
 
 // матчи
 export const matchesApi = {
-  getAll: (tournamentId?: number) =>
-    client.get<Match[]>('/matches', { params: { tournamentId } }).then(r => r.data),
+  getAll: (params?: { tournamentId?: number; statusCode?: number; teamId?: number }) =>
+    client.get<Match[]>('/matches', { params }).then(r => r.data),
   getById: (id: number) => client.get<Match>(`/matches/${id}`).then(r => r.data),
   create: (data: Partial<Match>) => client.post<Match>('/matches', data).then(r => r.data),
   update: (id: number, data: Partial<Match>) => client.put<Match>(`/matches/${id}`, data).then(r => r.data),
@@ -117,7 +117,7 @@ export const applicationsApi = {
   create: (data: Partial<Application>) => client.post<Application>('/applications', data).then(r => r.data),
   update: (id: number, data: Partial<Application>) => client.put<Application>(`/applications/${id}`, data).then(r => r.data),
   delete: (id: number) => client.delete(`/applications/${id}`),
-  addPlayer: (id: number, data: { playerId: number; shirtNumber?: number; ampluaCode?: number; isLibero: boolean }) =>
+  addPlayer: (id: number, data: { playerId: number; shirtNumber: number; isLibero: boolean }) =>
     client.post<Application>(`/applications/${id}/players`, data).then(r => r.data),
   removePlayer: (id: number, playerId: number) =>
     client.delete(`/applications/${id}/players/${playerId}`),
@@ -138,7 +138,7 @@ export const protocolsApi = {
     client.get<Protocol[]>('/protocols', { params: { matchId } }).then(r => r.data),
   getById: (id: number) => client.get<Protocol>(`/protocols/${id}`).then(r => r.data),
   getByMatch: (matchId: number) =>
-    client.get<Protocol>(`/protocols/by-match/${matchId}`).then(r => r.data),
+    client.get<Protocol[]>('/protocols', { params: { matchId } }).then(r => r.data[0] ?? null),
   create: (data: Partial<Protocol>) => client.post<Protocol>('/protocols', data).then(r => r.data),
   update: (id: number, data: Partial<Protocol>) => client.put<Protocol>(`/protocols/${id}`, data).then(r => r.data),
 };

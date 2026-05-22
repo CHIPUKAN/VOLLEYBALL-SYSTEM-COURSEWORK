@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+﻿import React, { useEffect, useState, useMemo } from 'react';
 import {
   Table, Button, Modal, Form, Input, Select, Space, Popconfirm,
   App, Typography, Row, Col, DatePicker, TimePicker, Tag, Switch,
@@ -44,6 +44,7 @@ const MatchesPage: React.FC = () => {
   const [tournaments, setTournaments] = useState<LookupItemDto[]>([]);
   const [teams, setTeams] = useState<LookupItemDto[]>([]);
   const [venues, setVenues] = useState<LookupItemDto[]>([]);
+  const [groups, setGroups] = useState<LookupItemDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'kanban' | 'calendar'>('table');
 
@@ -113,6 +114,13 @@ const MatchesPage: React.FC = () => {
     setModalOpen(true);
   };
 
+  const loadGroupsForTournament = async (tournamentId: number) => {
+    try {
+      const data = await lookupsApi.getGroups(tournamentId);
+      setGroups(data);
+    } catch { setGroups([]); }
+  };
+
   const handleEdit = (record: Match) => {
     setEditRecord(record);
     form.setFieldsValue({
@@ -123,10 +131,12 @@ const MatchesPage: React.FC = () => {
       startTime: record.startTime ? dayjs(`2000-01-01T${record.startTime}`) : undefined,
       venueId: record.venueId,
       stageCode: record.stageCode,
+      groupId: record.groupId,
       statusCode: record.statusCode,
       hasVideoChallenge: record.hasVideoChallenge,
       netHeight: record.netHeight,
     });
+    if (record.tournamentId) loadGroupsForTournament(record.tournamentId);
     setModalOpen(true);
   };
 
@@ -159,6 +169,7 @@ const MatchesPage: React.FC = () => {
       startTime: startTime ?? '',
       venueId: values.venueId as number,
       stageCode: values.stageCode as number,
+      groupId: values.groupId as number | undefined,
       statusCode: values.statusCode as number,
       hasVideoChallenge: values.hasVideoChallenge as boolean ?? false,
       netHeight: values.netHeight as number,
@@ -403,7 +414,7 @@ const MatchesPage: React.FC = () => {
         okText={editRecord ? 'Сохранить' : 'Создать'}
         cancelText="Отмена"
         width={760}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Row gutter={16}>
@@ -444,7 +455,19 @@ const MatchesPage: React.FC = () => {
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="guestTeamId" label="Команда-гость" rules={[{ required: true, message: 'Выберите команду' }]}>
+              <Form.Item
+                name="guestTeamId"
+                label="Команда-гость"
+                rules={[
+                  { required: true, message: 'Выберите команду' },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || value !== getFieldValue('homeTeamId')) return Promise.resolve();
+                      return Promise.reject(new Error('Команда-гость должна отличаться от команды-хозяина'));
+                    },
+                  }),
+                ]}
+              >
                 <Select
                   placeholder="Гости"
                   options={teams.map((t) => ({ value: Number(t.id), label: t.name }))}
@@ -456,6 +479,18 @@ const MatchesPage: React.FC = () => {
               </Form.Item>
             </Col>
           </Row>
+          {/* groupId показывается только для группового этапа (stageCode = 2) */}
+          <Form.Item shouldUpdate={(p, c) => p.stageCode !== c.stageCode || p.tournamentId !== c.tournamentId} noStyle>
+            {({ getFieldValue }) => getFieldValue('stageCode') === 2 ? (
+              <Form.Item name="groupId" label="Группа">
+                <Select
+                  allowClear
+                  placeholder="Выберите группу"
+                  options={groups.map(g => ({ value: Number(g.id), label: g.name }))}
+                />
+              </Form.Item>
+            ) : null}
+          </Form.Item>
           <Row gutter={16}>
             <Col xs={24} sm={8}>
               <Form.Item name="venueId" label="Площадка" rules={[{ required: true, message: 'Выберите площадку' }]}>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+﻿import React, { useEffect, useState, useMemo } from 'react';
 import {
   Table, Button, Modal, Form, Input, Select, Space, Popconfirm,
   App, Typography, Row, Col,
@@ -8,12 +8,14 @@ import type { ColumnsType } from 'antd/es/table';
 import { awardsApi } from '../api/index';
 import { lookupsApi } from '../api/lookupsApi';
 import type { Award, LookupDto, LookupItemDto } from '../types/index';
+import { useAuth } from '../context/AuthContext';
 
 const { Title } = Typography;
 
 // страница управления наградами
 const AwardsPage: React.FC = () => {
   const { message } = App.useApp();
+  const { can } = useAuth();
 
   const [awards, setAwards] = useState<Award[]>([]);
   const [awardTypes, setAwardTypes] = useState<LookupDto[]>([]);
@@ -154,16 +156,20 @@ const AwardsPage: React.FC = () => {
       fixed: 'right',
       render: (_: unknown, record: Award) => (
         <Space>
-          <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" />
-          <Popconfirm
-            title="Удалить награду?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Удалить"
-            cancelText="Отмена"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" icon={<DeleteOutlined />} danger size="small" />
-          </Popconfirm>
+          {can('manageAwards') && (
+            <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" />
+          )}
+          {can('manageAwards') && (
+            <Popconfirm
+              title="Удалить награду?"
+              onConfirm={() => handleDelete(record.id)}
+              okText="Удалить"
+              cancelText="Отмена"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="text" icon={<DeleteOutlined />} danger size="small" />
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -173,9 +179,11 @@ const AwardsPage: React.FC = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={3} style={{ margin: 0 }}>Награды</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-          Добавить
-        </Button>
+        {can('manageAwards') && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+            Добавить
+          </Button>
+        )}
       </div>
 
       {/* фильтр по турниру */}
@@ -214,7 +222,7 @@ const AwardsPage: React.FC = () => {
         okText={editRecord ? 'Сохранить' : 'Создать'}
         cancelText="Отмена"
         width={600}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Row gutter={16}>
@@ -235,6 +243,7 @@ const AwardsPage: React.FC = () => {
                 <Select
                   placeholder="Тип награды"
                   options={awardTypes.map((a) => ({ value: a.code, label: a.name }))}
+                  onChange={() => form.setFieldsValue({ playerId: undefined, teamId: undefined })}
                 />
               </Form.Item>
             </Col>
@@ -242,34 +251,40 @@ const AwardsPage: React.FC = () => {
           <Form.Item name="name" label="Название" rules={[{ required: true, message: 'Введите название награды' }]}>
             <Input placeholder="Лучший игрок турнира" />
           </Form.Item>
-          <Row gutter={16}>
-            <Col xs={24} sm={12}>
-              <Form.Item name="playerId" label="Игрок (если личная)">
-                <Select
-                  placeholder="Выберите игрока"
-                  allowClear
-                  options={players.map((p) => ({ value: Number(p.id), label: p.name }))}
-                  showSearch
-                  filterOption={(input, opt) =>
-                    (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
-                  }
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item name="teamId" label="Команда (если командная)">
-                <Select
-                  placeholder="Выберите команду"
-                  allowClear
-                  options={teams.map((t) => ({ value: Number(t.id), label: t.name }))}
-                  showSearch
-                  filterOption={(input, opt) =>
-                    (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
-                  }
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+          <Form.Item noStyle dependencies={['awardTypeCode']}>
+            {({ getFieldValue }) => {
+              const typeCode = getFieldValue('awardTypeCode') as number | undefined;
+              if (typeCode === 1) {
+                return (
+                  <Form.Item name="playerId" label="Игрок" rules={[{ required: true, message: 'Выберите игрока' }]}>
+                    <Select
+                      placeholder="Выберите игрока"
+                      options={players.map((p) => ({ value: Number(p.id), label: p.name }))}
+                      showSearch
+                      filterOption={(input, opt) =>
+                        (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
+                      }
+                    />
+                  </Form.Item>
+                );
+              }
+              if (typeCode === 2) {
+                return (
+                  <Form.Item name="teamId" label="Команда" rules={[{ required: true, message: 'Выберите команду' }]}>
+                    <Select
+                      placeholder="Выберите команду"
+                      options={teams.map((t) => ({ value: Number(t.id), label: t.name }))}
+                      showSearch
+                      filterOption={(input, opt) =>
+                        (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
+                      }
+                    />
+                  </Form.Item>
+                );
+              }
+              return null;
+            }}
+          </Form.Item>
         </Form>
       </Modal>
     </div>

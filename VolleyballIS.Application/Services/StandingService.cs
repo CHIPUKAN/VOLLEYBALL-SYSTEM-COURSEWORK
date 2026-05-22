@@ -1,3 +1,4 @@
+using VolleyballIS.Application.Common;
 using VolleyballIS.Application.DTOs.Standings;
 using VolleyballIS.Application.Repositories;
 using VolleyballIS.Domain.Entities;
@@ -43,7 +44,7 @@ namespace VolleyballIS.Application.Services
             IEnumerable<T14Match> allMatches = await matchRepository.GetByTournamentIdAsync(tournamentId);
 
             // учитываем только завершённые матчи
-            IEnumerable<T14Match> matches = allMatches.Where(m => m.StatusCode == 3);
+            IEnumerable<T14Match> matches = allMatches.Where(m => m.StatusCode == MatchStatusCodes.Completed);
             if (stageCode.HasValue) matches = matches.Where(m => m.StageCode == stageCode.Value);
             if (groupId.HasValue) matches = matches.Where(m => m.GroupId == groupId.Value);
 

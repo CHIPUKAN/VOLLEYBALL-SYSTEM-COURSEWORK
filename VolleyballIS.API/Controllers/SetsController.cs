@@ -41,6 +41,7 @@ namespace VolleyballIS.API.Controllers
         }
 
         [HttpPut]
+        [Authorize(Roles = "Суперадминистратор,СекретарьМатча")]
         public async Task<ActionResult<SetDto>> Upsert(int matchId, [FromBody] UpsertSetDto dto) // создать или обновить партию
         {
             if (!ModelState.IsValid)

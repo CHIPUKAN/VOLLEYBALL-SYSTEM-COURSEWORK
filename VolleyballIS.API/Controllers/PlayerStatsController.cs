@@ -41,6 +41,7 @@ namespace VolleyballIS.API.Controllers
         }
 
         [HttpPut]
+        [Authorize(Roles = "Суперадминистратор,СекретарьМатча")]
         public async Task<ActionResult<PlayerStatsDto>> Upsert(int matchId, [FromBody] UpsertPlayerStatsDto dto) // создать или обновить статистику
         {
             if (!ModelState.IsValid)

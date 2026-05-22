@@ -35,6 +35,19 @@ namespace VolleyballIS.Application.Services
 
         public async Task<SanctionDto> CreateSanctionAsync(CreateSanctionDto dto) // зарегистрировать санкцию
         {
+            if (dto.RecipientTypeCode == 1 && dto.PlayerId == null)
+            {
+                throw new InvalidOperationException("Для получателя «Игрок» требуется указать игрока");
+            }
+            if (dto.RecipientTypeCode != 1 && dto.DelegationMemberId == null)
+            {
+                throw new InvalidOperationException("Для нечлена-команды требуется указать члена делегации");
+            }
+            if (dto.SanctionKindCode == 2 && dto.DelayViolationCode == null)
+            {
+                throw new InvalidOperationException("Для нарушения задержки игры требуется указать код нарушения");
+            }
+
             T18Sanction sanction = new T18Sanction
             {
                 MatchId = dto.MatchId,

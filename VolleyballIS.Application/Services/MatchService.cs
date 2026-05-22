@@ -73,8 +73,8 @@ namespace VolleyballIS.Application.Services
 
         public async Task<MatchDto> UpdateMatchAsync(int id, UpdateMatchDto dto) // обновить матч
         {
-            bool exists = await matchRepository.ExistsAsync(id);
-            if (!exists)
+            T14Match? existing = await matchRepository.GetByIdAsync(id);
+            if (existing == null)
             {
                 throw new KeyNotFoundException($"Матч с идентификатором {id} не найден");
             }
@@ -84,27 +84,23 @@ namespace VolleyballIS.Application.Services
                 throw new InvalidOperationException("Команда-хозяин и команда-гость не могут совпадать");
             }
 
-            T14Match match = new T14Match
-            {
-                Id = id,
-                TournamentId = dto.TournamentId,
-                HomeTeamId = dto.HomeTeamId,
-                GuestTeamId = dto.GuestTeamId,
-                MatchDate = dto.MatchDate,
-                StartTime = dto.StartTime,
-                EndTime = dto.EndTime,
-                VenueId = dto.VenueId,
-                StageCode = dto.StageCode,
-                GroupId = dto.GroupId,
-                StatusCode = dto.StatusCode,
-                TechDefeatReason = dto.TechDefeatReason,
-                CoinTossWinnerTeamId = dto.CoinTossWinnerTeamId,
-                CoinTossChoiceCode = dto.CoinTossChoiceCode,
-                FirstServeTeamId = dto.FirstServeTeamId,
-                HasVideoChallenge = dto.HasVideoChallenge,
-                NetHeight = dto.NetHeight
-            };
-            T14Match updated = await matchRepository.UpdateAsync(match);
+            existing.TournamentId = dto.TournamentId;
+            existing.HomeTeamId = dto.HomeTeamId;
+            existing.GuestTeamId = dto.GuestTeamId;
+            existing.MatchDate = dto.MatchDate;
+            existing.StartTime = dto.StartTime;
+            existing.EndTime = dto.EndTime;
+            existing.VenueId = dto.VenueId;
+            existing.StageCode = dto.StageCode;
+            existing.GroupId = dto.GroupId;
+            existing.StatusCode = dto.StatusCode;
+            existing.TechDefeatReason = dto.TechDefeatReason;
+            existing.CoinTossWinnerTeamId = dto.CoinTossWinnerTeamId;
+            existing.CoinTossChoiceCode = dto.CoinTossChoiceCode;
+            existing.FirstServeTeamId = dto.FirstServeTeamId;
+            existing.HasVideoChallenge = dto.HasVideoChallenge;
+            existing.NetHeight = dto.NetHeight;
+            T14Match updated = await matchRepository.UpdateAsync(existing);
             MatchDto result = MapToDto(updated);
             return result;
         }
@@ -144,9 +140,11 @@ namespace VolleyballIS.Application.Services
                 StatusName = match.Status?.Name,
                 TechDefeatReason = match.TechDefeatReason,
                 CoinTossWinnerTeamId = match.CoinTossWinnerTeamId,
+                CoinTossWinnerTeamName = match.CoinTossWinnerTeam?.Name,
                 CoinTossChoiceCode = match.CoinTossChoiceCode,
                 CoinTossChoiceName = match.CoinTossChoice?.Name,
                 FirstServeTeamId = match.FirstServeTeamId,
+                FirstServeTeamName = match.FirstServeTeam?.Name,
                 HasVideoChallenge = match.HasVideoChallenge,
                 NetHeight = match.NetHeight
             };

@@ -55,8 +55,8 @@ namespace VolleyballIS.Application.Services
 
         public async Task<SeasonDto> UpdateSeasonAsync(int id, UpdateSeasonDto dto) // обновить сезон
         {
-            bool exists = await seasonRepository.ExistsAsync(id);
-            if (!exists)
+            T9Season? existing = await seasonRepository.GetByIdAsync(id);
+            if (existing == null)
             {
                 throw new KeyNotFoundException($"Сезон с идентификатором {id} не найден");
             }
@@ -67,15 +67,11 @@ namespace VolleyballIS.Application.Services
                 throw new InvalidOperationException($"Сезон с наименованием «{dto.Name}» уже существует");
             }
 
-            T9Season season = new T9Season
-            {
-                Id = id,
-                Name = dto.Name,
-                StartDate = dto.StartDate,
-                EndDate = dto.EndDate,
-                Status = dto.Status
-            };
-            T9Season updated = await seasonRepository.UpdateAsync(season);
+            existing.Name = dto.Name;
+            existing.StartDate = dto.StartDate;
+            existing.EndDate = dto.EndDate;
+            existing.Status = dto.Status;
+            T9Season updated = await seasonRepository.UpdateAsync(existing);
             SeasonDto result = MapToDto(updated);
             return result;
         }

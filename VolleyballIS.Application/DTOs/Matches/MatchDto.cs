@@ -46,11 +46,15 @@ namespace VolleyballIS.Application.DTOs.Matches
 
         public int? CoinTossWinnerTeamId { get; set; } // команда-победитель жеребьёвки
 
+        public string? CoinTossWinnerTeamName { get; set; } // название команды-победителя жеребьёвки
+
         public short? CoinTossChoiceCode { get; set; } // выбор победителя жеребьёвки (из С17)
 
         public string? CoinTossChoiceName { get; set; } // наименование выбора жеребьёвки
 
         public int? FirstServeTeamId { get; set; } // команда, выполняющая первую подачу
+
+        public string? FirstServeTeamName { get; set; } // название команды первой подачи
 
         public bool HasVideoChallenge { get; set; } // наличие видеопросмотра
 

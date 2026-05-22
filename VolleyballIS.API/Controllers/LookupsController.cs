@@ -217,16 +217,14 @@ namespace VolleyballIS.API.Controllers
         [HttpGet("coaches")]
         public async Task<ActionResult<IEnumerable<LookupItemDto>>> GetCoaches() // Т3. Тренеры (ФИО)
         {
-            IEnumerable<LookupItemDto> result = await dbContext.Coaches
+            List<Domain.Entities.T3Coach> coaches = await dbContext.Coaches
                 .OrderBy(x => x.LastName).ThenBy(x => x.FirstName)
-                .Select(x => new LookupItemDto
-                {
-                    Id = x.Id.ToString(),
-                    Name = x.MiddleName != null
-                        ? x.LastName + " " + x.FirstName + " " + x.MiddleName
-                        : x.LastName + " " + x.FirstName
-                })
                 .ToListAsync();
+            IEnumerable<LookupItemDto> result = coaches.Select(x => new LookupItemDto
+            {
+                Id = x.Id.ToString(),
+                Name = x.FullName()
+            });
             return Ok(result);
         }
 
@@ -267,32 +265,28 @@ namespace VolleyballIS.API.Controllers
         [HttpGet("organizers")]
         public async Task<ActionResult<IEnumerable<LookupItemDto>>> GetOrganizers() // Т13. Организаторы (ФИО)
         {
-            IEnumerable<LookupItemDto> result = await dbContext.Organizers
+            List<Domain.Entities.T13Organizer> organizers = await dbContext.Organizers
                 .OrderBy(x => x.LastName).ThenBy(x => x.FirstName)
-                .Select(x => new LookupItemDto
-                {
-                    Id = x.Id.ToString(),
-                    Name = x.MiddleName != null
-                        ? x.LastName + " " + x.FirstName + " " + x.MiddleName
-                        : x.LastName + " " + x.FirstName
-                })
                 .ToListAsync();
+            IEnumerable<LookupItemDto> result = organizers.Select(x => new LookupItemDto
+            {
+                Id = x.Id.ToString(),
+                Name = x.FullName()
+            });
             return Ok(result);
         }
 
         [HttpGet("referees")]
         public async Task<ActionResult<IEnumerable<LookupItemDto>>> GetReferees() // Т12. Судьи (ФИО)
         {
-            IEnumerable<LookupItemDto> result = await dbContext.Referees
+            List<Domain.Entities.T12Referee> referees = await dbContext.Referees
                 .OrderBy(x => x.LastName).ThenBy(x => x.FirstName)
-                .Select(x => new LookupItemDto
-                {
-                    Id = x.Id.ToString(),
-                    Name = x.MiddleName != null
-                        ? x.LastName + " " + x.FirstName + " " + x.MiddleName
-                        : x.LastName + " " + x.FirstName
-                })
                 .ToListAsync();
+            IEnumerable<LookupItemDto> result = referees.Select(x => new LookupItemDto
+            {
+                Id = x.Id.ToString(),
+                Name = x.FullName()
+            });
             return Ok(result);
         }
 
@@ -314,16 +308,14 @@ namespace VolleyballIS.API.Controllers
             {
                 query = query.Where(x => x.TeamId == teamId.Value);
             }
-            IEnumerable<LookupItemDto> result = await query
+            List<Domain.Entities.T6Player> players = await query
                 .OrderBy(x => x.LastName).ThenBy(x => x.FirstName)
-                .Select(x => new LookupItemDto
-                {
-                    Id = x.Id.ToString(),
-                    Name = x.MiddleName != null
-                        ? x.LastName + " " + x.FirstName + " " + x.MiddleName
-                        : x.LastName + " " + x.FirstName
-                })
                 .ToListAsync();
+            IEnumerable<LookupItemDto> result = players.Select(x => new LookupItemDto
+            {
+                Id = x.Id.ToString(),
+                Name = x.FullName()
+            });
             return Ok(result);
         }
 

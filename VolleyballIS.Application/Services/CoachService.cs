@@ -51,23 +51,19 @@ namespace VolleyballIS.Application.Services
 
         public async Task<CoachDto> UpdateCoachAsync(int id, UpdateCoachDto dto) // обновить тренера
         {
-            bool exists = await coachRepository.ExistsAsync(id);
-            if (!exists)
+            T3Coach? existing = await coachRepository.GetByIdAsync(id);
+            if (existing == null)
             {
                 throw new KeyNotFoundException($"Тренер с идентификатором {id} не найден");
             }
 
-            T3Coach coach = new T3Coach
-            {
-                Id = id,
-                LastName = dto.LastName,
-                FirstName = dto.FirstName,
-                MiddleName = dto.MiddleName,
-                Email = dto.Email,
-                Phone = dto.Phone,
-                Category = dto.Category
-            };
-            T3Coach updated = await coachRepository.UpdateAsync(coach);
+            existing.LastName = dto.LastName;
+            existing.FirstName = dto.FirstName;
+            existing.MiddleName = dto.MiddleName;
+            existing.Email = dto.Email;
+            existing.Phone = dto.Phone;
+            existing.Category = dto.Category;
+            T3Coach updated = await coachRepository.UpdateAsync(existing);
             CoachDto result = MapToDto(updated);
             return result;
         }

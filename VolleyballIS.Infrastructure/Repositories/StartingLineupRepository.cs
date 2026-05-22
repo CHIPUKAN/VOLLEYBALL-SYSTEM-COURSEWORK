@@ -57,6 +57,19 @@ namespace VolleyballIS.Infrastructure.Repositories
 
         public async Task<R1StartingLineup> UpsertAsync(R1StartingLineup lineup) // создать или обновить позицию
         {
+            // если игрок уже занимает другую позицию в этой же команде и партии — убрать его оттуда
+            R1StartingLineup? existingByPlayer = await dbContext.StartingLineups
+                .FirstOrDefaultAsync(l =>
+                    l.MatchId == lineup.MatchId &&
+                    l.TeamId == lineup.TeamId &&
+                    l.SetNumber == lineup.SetNumber &&
+                    l.PlayerId == lineup.PlayerId &&
+                    l.PositionNo != lineup.PositionNo);
+            if (existingByPlayer != null)
+            {
+                dbContext.StartingLineups.Remove(existingByPlayer);
+            }
+
             R1StartingLineup? existing = await dbContext.StartingLineups
                 .FirstOrDefaultAsync(l =>
                     l.MatchId == lineup.MatchId &&

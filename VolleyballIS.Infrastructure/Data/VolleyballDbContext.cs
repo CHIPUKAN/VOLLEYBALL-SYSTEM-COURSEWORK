@@ -453,6 +453,7 @@ namespace VolleyballIS.Infrastructure.Data
                 entity.Property(e => e.TournamentId).HasColumnName("tournament_id").IsRequired();
                 entity.Property(e => e.SubmissionDate).HasColumnName("submission_date");
                 entity.Property(e => e.StatusCode).HasColumnName("status_code");
+                entity.Property(e => e.Comment).HasColumnName("comment").HasColumnType("text");
                 entity.HasIndex(e => new { e.TeamId, e.TournamentId }).IsUnique();
 
                 entity.HasOne(e => e.Team)
@@ -594,6 +595,16 @@ namespace VolleyballIS.Infrastructure.Data
                 entity.HasOne(e => e.CoinTossChoice)
                     .WithMany()
                     .HasForeignKey(e => e.CoinTossChoiceCode)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.CoinTossWinnerTeam)
+                    .WithMany()
+                    .HasForeignKey(e => e.CoinTossWinnerTeamId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.FirstServeTeam)
+                    .WithMany()
+                    .HasForeignKey(e => e.FirstServeTeamId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
         }

@@ -32,6 +32,7 @@ namespace VolleyballIS.Application.DTOs.Players
         public short? JerseyNumber { get; set; } // номер на футболке (необязательно)
 
         [Required(ErrorMessage = "Амплуа обязательно")]
+        [Range(1, short.MaxValue, ErrorMessage = "Код амплуа должен быть положительным")]
         public short AmpluaCode { get; set; } // код амплуа
 
         [MaxLength(30)]

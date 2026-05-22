@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
   Table, Button, Modal, Form, Select, App, Typography, Tag,
-  Space, Popconfirm, Row, Col, InputNumber, Checkbox, Descriptions, Radio,
+  Space, Popconfirm, Row, Col, InputNumber, Checkbox, Descriptions, Radio, Input,
 } from 'antd';
 import {
   PlusOutlined, DeleteOutlined, CheckOutlined, CloseOutlined,
@@ -91,6 +91,29 @@ const ApplicationsPage: React.FC = () => {
     } catch {
       message.error('Ошибка обновления статуса');
     }
+  };
+
+  // отклонение заявки с возможностью ввести причину
+  const rejectWithComment = (app: Application) => {
+    let comment = '';
+    Modal.confirm({
+      title: `Отклонить заявку ${app.teamName ?? ''}?`,
+      content: (
+        <Input.TextArea
+          placeholder="Причина отклонения (необязательно)"
+          rows={3}
+          onChange={e => { comment = e.target.value; }}
+        />
+      ),
+      okText: 'Отклонить',
+      okButtonProps: { danger: true },
+      cancelText: 'Отмена',
+      onOk: async () => {
+        await applicationsApi.update(app.id, { statusCode: 3, ...(comment ? { comment } : {}) });
+        message.success('Заявка отклонена');
+        loadData();
+      },
+    });
   };
 
   // смена статуса из kanban (async для ApplicationKanban)
@@ -230,11 +253,9 @@ const ApplicationsPage: React.FC = () => {
             </Popconfirm>
           )}
           {can('reviewApplications') && rec.statusCode !== 3 && (
-            <Popconfirm title="Отклонить заявку?" onConfirm={() => updateStatus(rec, 3)} okText="Да" okButtonProps={{ danger: true }}>
-              <Button size="small" danger icon={<CloseOutlined />} ghost>
-                Отклонить
-              </Button>
-            </Popconfirm>
+            <Button size="small" danger icon={<CloseOutlined />} ghost onClick={() => rejectWithComment(rec)}>
+              Отклонить
+            </Button>
           )}
           {can('manageApplications') && (
             <Popconfirm title="Удалить заявку?" onConfirm={() => handleDelete(rec.id)} okText="Удалить" okButtonProps={{ danger: true }}>
@@ -360,7 +381,7 @@ const ApplicationsPage: React.FC = () => {
         confirmLoading={saving}
         okText="Подать"
         cancelText="Отмена"
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={createForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="tournamentId" label="Турнир" rules={[{ required: true, message: 'Выберите турнир' }]}>
@@ -394,7 +415,7 @@ const ApplicationsPage: React.FC = () => {
         onCancel={() => { setDetailModalOpen(false); setAddPlayerOpen(false); }}
         footer={null}
         width={700}
-        destroyOnClose
+        destroyOnHidden
       >
         {selectedApp && (
           <>

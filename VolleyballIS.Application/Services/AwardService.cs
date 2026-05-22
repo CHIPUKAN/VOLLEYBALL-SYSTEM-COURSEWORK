@@ -35,6 +35,8 @@ namespace VolleyballIS.Application.Services
 
         public async Task<AwardDto> CreateAwardAsync(CreateAwardDto dto) // создать награду
         {
+            ValidateAwardRecipient(dto.AwardTypeCode, dto.PlayerId, dto.TeamId);
+
             T20Award award = new T20Award
             {
                 TournamentId = dto.TournamentId,
@@ -56,6 +58,8 @@ namespace VolleyballIS.Application.Services
                 throw new KeyNotFoundException($"Награда с идентификатором {id} не найдена");
             }
 
+            ValidateAwardRecipient(dto.AwardTypeCode, dto.PlayerId, dto.TeamId);
+
             existing.AwardTypeCode = dto.AwardTypeCode;
             existing.Name = dto.Name;
             existing.PlayerId = dto.PlayerId;
@@ -73,6 +77,18 @@ namespace VolleyballIS.Application.Services
                 throw new KeyNotFoundException($"Награда с идентификатором {id} не найдена");
             }
             await awardRepository.DeleteAsync(id);
+        }
+
+        private static void ValidateAwardRecipient(short typeCode, int? playerId, int? teamId) // проверить соответствие типа и получателя
+        {
+            if (typeCode == 1 && (playerId == null || teamId != null))
+            {
+                throw new InvalidOperationException("Индивидуальная награда требует только игрока (без команды)");
+            }
+            if (typeCode == 2 && (teamId == null || playerId != null))
+            {
+                throw new InvalidOperationException("Командная награда требует только команду (без игрока)");
+            }
         }
 
         private static AwardDto MapToDto(T20Award a) // маппинг T20Award -> AwardDto

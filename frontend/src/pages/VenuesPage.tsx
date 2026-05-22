@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+﻿import React, { useEffect, useState, useMemo } from 'react';
 import {
   Table, Button, Modal, Form, Input, Space, Popconfirm,
   App, Typography, Row, Col, InputNumber,
@@ -7,6 +7,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { venuesApi } from '../api/index';
 import type { Venue } from '../types/index';
+import { useAuth } from '../context/AuthContext';
 
 const { Title } = Typography;
 const { Search } = Input;
@@ -14,6 +15,7 @@ const { Search } = Input;
 // страница управления площадками
 const VenuesPage: React.FC = () => {
   const { message } = App.useApp();
+  const { can } = useAuth();
 
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(false);
@@ -133,16 +135,20 @@ const VenuesPage: React.FC = () => {
       fixed: 'right',
       render: (_: unknown, record: Venue) => (
         <Space>
-          <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" />
-          <Popconfirm
-            title="Удалить площадку?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Удалить"
-            cancelText="Отмена"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" icon={<DeleteOutlined />} danger size="small" />
-          </Popconfirm>
+          {can('manageVenues') && (
+            <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" />
+          )}
+          {can('manageVenues') && (
+            <Popconfirm
+              title="Удалить площадку?"
+              onConfirm={() => handleDelete(record.id)}
+              okText="Удалить"
+              cancelText="Отмена"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="text" icon={<DeleteOutlined />} danger size="small" />
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -152,9 +158,11 @@ const VenuesPage: React.FC = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={3} style={{ margin: 0 }}>Площадки</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-          Добавить
-        </Button>
+        {can('manageVenues') && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+            Добавить
+          </Button>
+        )}
       </div>
 
       <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
@@ -186,7 +194,7 @@ const VenuesPage: React.FC = () => {
         okText={editRecord ? 'Сохранить' : 'Создать'}
         cancelText="Отмена"
         width={520}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Row gutter={16}>

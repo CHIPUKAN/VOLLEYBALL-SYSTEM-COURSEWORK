@@ -41,6 +41,8 @@ namespace VolleyballIS.Application.Services
                 throw new InvalidOperationException($"Турнир с наименованием «{dto.Name}» уже существует");
             }
 
+            ValidateMaxPlayersPerApp(dto.MaxPlayersPerApp);
+
             T10Tournament tournament = new T10Tournament
             {
                 SeasonId = dto.SeasonId,
@@ -66,8 +68,8 @@ namespace VolleyballIS.Application.Services
 
         public async Task<TournamentDto> UpdateTournamentAsync(int id, UpdateTournamentDto dto) // обновить турнир
         {
-            bool exists = await tournamentRepository.ExistsAsync(id);
-            if (!exists)
+            T10Tournament? existing = await tournamentRepository.GetByIdAsync(id);
+            if (existing == null)
             {
                 throw new KeyNotFoundException($"Турнир с идентификатором {id} не найден");
             }
@@ -78,26 +80,24 @@ namespace VolleyballIS.Application.Services
                 throw new InvalidOperationException($"Турнир с наименованием «{dto.Name}» уже существует");
             }
 
-            T10Tournament tournament = new T10Tournament
-            {
-                Id = id,
-                SeasonId = dto.SeasonId,
-                OrganizerId = dto.OrganizerId,
-                Name = dto.Name,
-                StartDate = dto.StartDate,
-                EndDate = dto.EndDate,
-                ApplicationDeadline = dto.ApplicationDeadline,
-                City = dto.City,
-                Description = dto.Description,
-                MaxTeams = dto.MaxTeams,
-                Gender = dto.Gender,
-                AgeCategory = dto.AgeCategory,
-                Level = dto.Level,
-                MaxPlayersPerApp = dto.MaxPlayersPerApp,
-                FormatCode = dto.FormatCode,
-                ScoringSystemCode = dto.ScoringSystemCode
-            };
-            T10Tournament updated = await tournamentRepository.UpdateAsync(tournament);
+            ValidateMaxPlayersPerApp(dto.MaxPlayersPerApp);
+
+            existing.SeasonId = dto.SeasonId;
+            existing.OrganizerId = dto.OrganizerId;
+            existing.Name = dto.Name;
+            existing.StartDate = dto.StartDate;
+            existing.EndDate = dto.EndDate;
+            existing.ApplicationDeadline = dto.ApplicationDeadline;
+            existing.City = dto.City;
+            existing.Description = dto.Description;
+            existing.MaxTeams = dto.MaxTeams;
+            existing.Gender = dto.Gender;
+            existing.AgeCategory = dto.AgeCategory;
+            existing.Level = dto.Level;
+            existing.MaxPlayersPerApp = dto.MaxPlayersPerApp;
+            existing.FormatCode = dto.FormatCode;
+            existing.ScoringSystemCode = dto.ScoringSystemCode;
+            T10Tournament updated = await tournamentRepository.UpdateAsync(existing);
             TournamentDto result = MapToDto(updated);
             return result;
         }
@@ -110,6 +110,15 @@ namespace VolleyballIS.Application.Services
                 throw new KeyNotFoundException($"Турнир с идентификатором {id} не найден");
             }
             await tournamentRepository.DeleteAsync(id);
+        }
+
+        private static void ValidateMaxPlayersPerApp(short value) // проверить допустимость значения max_players_per_app
+        {
+            short[] allowed = [12, 14];
+            if (!allowed.Contains(value))
+            {
+                throw new InvalidOperationException("Максимальное количество игроков в заявке должно быть 12 или 14");
+            }
         }
 
         private static TournamentDto MapToDto(T10Tournament tournament) // маппинг сущности T10Tournament в TournamentDto

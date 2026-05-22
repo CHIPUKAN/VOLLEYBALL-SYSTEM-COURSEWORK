@@ -23,7 +23,10 @@ namespace VolleyballIS.API.Controllers
 
         #region Методы
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<MatchDto>>> GetAll([FromQuery] int? tournamentId) // получить матчи (с фильтром по турниру)
+        public async Task<ActionResult<IEnumerable<MatchDto>>> GetAll(
+            [FromQuery] int? tournamentId,
+            [FromQuery] short? statusCode,
+            [FromQuery] int? teamId) // получить матчи (с фильтрами)
         {
             IEnumerable<MatchDto> result;
             if (tournamentId.HasValue)
@@ -34,6 +37,17 @@ namespace VolleyballIS.API.Controllers
             {
                 result = await matchService.GetAllMatchesAsync();
             }
+
+            // дополнительные фильтры на уровне сервиса
+            if (statusCode.HasValue)
+            {
+                result = result.Where(m => m.StatusCode == statusCode.Value);
+            }
+            if (teamId.HasValue)
+            {
+                result = result.Where(m => m.HomeTeamId == teamId.Value || m.GuestTeamId == teamId.Value);
+            }
+
             return Ok(result);
         }
 
@@ -63,7 +77,7 @@ namespace VolleyballIS.API.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                return Conflict(new { message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -86,7 +100,7 @@ namespace VolleyballIS.API.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                return Conflict(new { message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 

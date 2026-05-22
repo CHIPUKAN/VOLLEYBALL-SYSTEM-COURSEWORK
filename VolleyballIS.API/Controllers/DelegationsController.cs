@@ -49,7 +49,7 @@ namespace VolleyballIS.API.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Суперадминистратор,Тренер")]
+        [Authorize(Roles = "Суперадминистратор,ТренерКоманды,ПредставительКоманды")]
         public async Task<ActionResult<DelegationDto>> Create(int matchId, [FromBody] CreateDelegationDto dto) // добавить участника
         {
             if (!ModelState.IsValid)
@@ -62,7 +62,7 @@ namespace VolleyballIS.API.Controllers
         }
 
         [HttpPut("{id:int}")]
-        [Authorize(Roles = "Суперадминистратор,Тренер")]
+        [Authorize(Roles = "Суперадминистратор,ТренерКоманды,ПредставительКоманды")]
         public async Task<ActionResult<DelegationDto>> Update(int matchId, int id, [FromBody] UpdateDelegationDto dto) // обновить участника
         {
             if (!ModelState.IsValid)
@@ -81,7 +81,7 @@ namespace VolleyballIS.API.Controllers
         }
 
         [HttpDelete("{id:int}")]
-        [Authorize(Roles = "Суперадминистратор,Тренер")]
+        [Authorize(Roles = "Суперадминистратор,ТренерКоманды,ПредставительКоманды")]
         public async Task<IActionResult> Delete(int matchId, int id) // удалить участника
         {
             try

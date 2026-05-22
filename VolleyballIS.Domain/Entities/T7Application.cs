@@ -22,6 +22,8 @@ namespace VolleyballIS.Domain.Entities
 
         public short StatusCode { get; set; } = 1; // код статуса заявки (внешний ключ -> s3_application_statuses)
 
+        public string? Comment { get; set; } // комментарий (причина отклонения и т.п.)
+
         // навигационные свойства
         public T4Team? Team { get; set; }                            // команда-заявитель
         public T10Tournament? Tournament { get; set; }               // турнир

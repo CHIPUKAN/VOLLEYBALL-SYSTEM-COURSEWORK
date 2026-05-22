@@ -38,7 +38,8 @@ namespace VolleyballIS.API.Controllers
                 return BadRequest(ModelState);
             }
 
-            string[] allowedRoles = ["Тренер", "Игрок", "Судья", "Организатор", "Зритель"];
+            // при самостоятельной регистрации выдаём только безопасные роли
+            string[] allowedRoles = ["ТренерКоманды", "СудьяМатча", "ПредставительКоманды", "Организатор", "Зритель"];
             if (!allowedRoles.Contains(dto.Role))
             {
                 dto.Role = "Зритель";
@@ -111,7 +112,12 @@ namespace VolleyballIS.API.Controllers
                 new Claim("fullName", user.FullName ?? string.Empty)
             ];
 
+            string issuer = configuration["Jwt:Issuer"] ?? "VolleyballIS";
+            string audience = configuration["Jwt:Audience"] ?? "VolleyballIS.Client";
+
             JwtSecurityToken jwtToken = new JwtSecurityToken(
+                issuer: issuer,
+                audience: audience,
                 claims: claims,
                 expires: DateTime.UtcNow.AddHours(expiresInHours),
                 signingCredentials: credentials);

@@ -76,7 +76,7 @@ const TournamentTree: React.FC<TournamentTreeProps> = ({
 
     if (key.startsWith('tournament-')) {
       const tournamentId = Number(key.replace('tournament-', ''));
-      const allMatches = await matchesApi.getAll(tournamentId);
+      const allMatches = await matchesApi.getAll({ tournamentId });
       const byStage: Record<string, typeof allMatches> = {};
       allMatches.forEach(m => {
         const stage = m.stageName ?? 'Без этапа';

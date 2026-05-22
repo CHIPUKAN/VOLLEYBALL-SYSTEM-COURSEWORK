@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+﻿import React, { useEffect, useState, useMemo } from 'react';
 import {
   Table, Button, Modal, Form, Input, Space, Popconfirm,
   App, Typography, Row, Col,
@@ -7,6 +7,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { coachesApi } from '../api/index';
 import type { Coach } from '../types/index';
+import { useAuth } from '../context/AuthContext';
 
 const { Title } = Typography;
 const { Search } = Input;
@@ -14,6 +15,7 @@ const { Search } = Input;
 // страница управления тренерами
 const CoachesPage: React.FC = () => {
   const { message } = App.useApp();
+  const { can } = useAuth();
 
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [loading, setLoading] = useState(false);
@@ -133,16 +135,20 @@ const CoachesPage: React.FC = () => {
       fixed: 'right',
       render: (_: unknown, record: Coach) => (
         <Space>
-          <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" />
-          <Popconfirm
-            title="Удалить тренера?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Удалить"
-            cancelText="Отмена"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" icon={<DeleteOutlined />} danger size="small" />
-          </Popconfirm>
+          {can('manageCoaches') && (
+            <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" />
+          )}
+          {can('manageCoaches') && (
+            <Popconfirm
+              title="Удалить тренера?"
+              onConfirm={() => handleDelete(record.id)}
+              okText="Удалить"
+              cancelText="Отмена"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="text" icon={<DeleteOutlined />} danger size="small" />
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -152,9 +158,11 @@ const CoachesPage: React.FC = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={3} style={{ margin: 0 }}>Тренеры</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-          Добавить
-        </Button>
+        {can('manageCoaches') && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+            Добавить
+          </Button>
+        )}
       </div>
 
       <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
@@ -186,7 +194,7 @@ const CoachesPage: React.FC = () => {
         okText={editRecord ? 'Сохранить' : 'Создать'}
         cancelText="Отмена"
         width={560}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Row gutter={16}>

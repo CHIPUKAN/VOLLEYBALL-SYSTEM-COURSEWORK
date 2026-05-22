@@ -57,8 +57,8 @@ namespace VolleyballIS.Application.Services
 
         public async Task<TeamDto> UpdateTeamAsync(int id, UpdateTeamDto dto) // обновить команду из DTO
         {
-            bool exists = await teamRepository.ExistsAsync(id);
-            if (!exists)
+            T4Team? existing = await teamRepository.GetByIdAsync(id);
+            if (existing == null)
             {
                 throw new KeyNotFoundException($"Команда с идентификатором {id} не найдена");
             }
@@ -69,17 +69,12 @@ namespace VolleyballIS.Application.Services
                 throw new InvalidOperationException($"Команда с наименованием «{dto.Name}» уже существует");
             }
 
-            T4Team team = new T4Team
-            {
-                Id = id,
-                Name = dto.Name,
-                LogoUrl = dto.LogoUrl,
-                RegionOktmo = dto.RegionOktmo,
-                HeadCoachId = dto.HeadCoachId,
-                HomeVenueId = dto.HomeVenueId
-            };
-
-            T4Team updated = await teamRepository.UpdateAsync(team);
+            existing.Name = dto.Name;
+            existing.LogoUrl = dto.LogoUrl;
+            existing.RegionOktmo = dto.RegionOktmo;
+            existing.HeadCoachId = dto.HeadCoachId;
+            existing.HomeVenueId = dto.HomeVenueId;
+            T4Team updated = await teamRepository.UpdateAsync(existing);
             TeamDto result = MapToDto(updated);
             return result;
         }

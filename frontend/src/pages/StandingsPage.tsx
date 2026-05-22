@@ -6,6 +6,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { OrderedListOutlined } from '@ant-design/icons';
 import { standingsApi, tournamentsApi, groupsApi } from '../api';
+import { lookupsApi } from '../api/lookupsApi';
 import type { StandingRow, Tournament, Group } from '../types';
 
 const { Title, Text } = Typography;
@@ -42,15 +43,19 @@ const StandingsPage: React.FC = () => {
   const [selectedStage, setSelectedStage] = useState<number | undefined>();
   const [selectedGroup, setSelectedGroup] = useState<number | undefined>();
 
+  const [stages, setStages] = useState<import('../types/index').LookupDto[]>([]);
   const [loadingTournaments, setLoadingTournaments] = useState(false);
   const [loadingTable, setLoadingTable] = useState(false);
 
-  // загрузка списка турниров
+  // загрузка списка турниров и этапов
   useEffect(() => {
     setLoadingTournaments(true);
-    tournamentsApi.getAll()
-      .then(setTournaments)
-      .catch(() => message.error('Не удалось загрузить турниры'))
+    Promise.all([
+      tournamentsApi.getAll(),
+      lookupsApi.getTournamentStages(),
+    ])
+      .then(([tourData, stagesData]) => { setTournaments(tourData); setStages(stagesData); })
+      .catch(() => message.error('Не удалось загрузить данные'))
       .finally(() => setLoadingTournaments(false));
   }, []);
 
@@ -74,16 +79,7 @@ const StandingsPage: React.FC = () => {
       .finally(() => setLoadingTable(false));
   }, [selectedTournament, selectedStage, selectedGroup]);
 
-  const stageOptions = [
-    { value: 1, label: 'Квалификация' },
-    { value: 2, label: 'Групповой этап' },
-    { value: 3, label: '1/8 финала' },
-    { value: 4, label: 'Четвертьфинал' },
-    { value: 5, label: 'Полуфинал' },
-    { value: 6, label: 'Матч за 3-е место' },
-    { value: 7, label: 'Финал' },
-    { value: 8, label: 'Тур регулярного чемпионата' },
-  ];
+  const stageOptions = stages.map(s => ({ value: s.code, label: s.name }));
 
   const total = rows.length;
 

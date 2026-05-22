@@ -31,6 +31,8 @@ namespace VolleyballIS.Infrastructure.Repositories
                 .Include(m => m.Status)
                 .Include(m => m.Group)
                 .Include(m => m.CoinTossChoice)
+                .Include(m => m.CoinTossWinnerTeam)
+                .Include(m => m.FirstServeTeam)
                 .OrderByDescending(m => m.MatchDate)
                 .ThenBy(m => m.StartTime)
                 .ToListAsync();
@@ -47,6 +49,8 @@ namespace VolleyballIS.Infrastructure.Repositories
                 .Include(m => m.Status)
                 .Include(m => m.Group)
                 .Include(m => m.CoinTossChoice)
+                .Include(m => m.CoinTossWinnerTeam)
+                .Include(m => m.FirstServeTeam)
                 .Where(m => m.TournamentId == tournamentId)
                 .OrderBy(m => m.MatchDate)
                 .ThenBy(m => m.StartTime)
@@ -65,6 +69,8 @@ namespace VolleyballIS.Infrastructure.Repositories
                 .Include(m => m.Status)
                 .Include(m => m.Group)
                 .Include(m => m.CoinTossChoice)
+                .Include(m => m.CoinTossWinnerTeam)
+                .Include(m => m.FirstServeTeam)
                 .FirstOrDefaultAsync(m => m.Id == id);
             return result;
         }

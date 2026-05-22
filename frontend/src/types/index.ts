@@ -79,7 +79,7 @@ export interface Coach {
   lastName: string;
   firstName: string;
   middleName?: string;
-  fullName?: string;
+  fullName: string;
   category?: string;
   email?: string;
   phone?: string;
@@ -93,7 +93,7 @@ export interface Player {
   lastName: string;
   firstName: string;
   middleName?: string;
-  fullName?: string;
+  fullName: string;
   birthDate?: string;
   heightCm?: number;
   weightKg?: number;
@@ -123,7 +123,7 @@ export interface Organizer {
   lastName: string;
   firstName: string;
   middleName?: string;
-  fullName?: string;
+  fullName: string;
   email?: string;
   phone?: string;
 }
@@ -134,7 +134,7 @@ export interface Referee {
   lastName: string;
   firstName: string;
   middleName?: string;
-  fullName?: string;
+  fullName: string;
   category?: string;
   licenseNumber?: string;
   email?: string;
@@ -171,7 +171,6 @@ export interface Group {
   tournamentId: number;
   tournamentName?: string;
   name: string;
-  description?: string;
 }
 
 // матчи
@@ -223,6 +222,7 @@ export interface ApplicationPlayer {
   playerId: number;
   playerName?: string;
   shirtNumber?: number;
+  role: string;
   ampluaCode?: number;
   ampluaName?: string;
   isLibero: boolean;
@@ -243,14 +243,11 @@ export interface RefereeAssignment {
 export interface Protocol {
   id: number;
   matchId: number;
-  matchDescription?: string;
+  organizerId?: number;
+  organizerFullName?: string;
+  approvalDate?: string;
   statusCode: number;
   statusName?: string;
-  homeScore: number;
-  guestScore: number;
-  createdAt: string;
-  approvedAt?: string;
-  approvedByUserId?: number;
 }
 
 // партии
@@ -302,13 +299,10 @@ export interface MatchEvent {
   eventTypeName?: string;
   teamId?: number;
   teamName?: string;
-  playerId?: number;
-  playerFullName?: string;
   homeScoreAtMoment: number;
   guestScoreAtMoment: number;
   minuteMark?: number;
-  seqInMatch: number;
-  isTeamEvent: boolean;
+  globalSeqInSet: number;
   substitution?: SubstitutionDetail;
   timeout?: TimeoutDetail;
 }
@@ -336,14 +330,21 @@ export interface Sanction {
   teamName?: string;
   playerId?: number;
   playerFullName?: string;
+  delegationMemberId?: number;
   recipientTypeCode: number;
   recipientTypeName?: string;
   sanctionTypeCode: number;
   sanctionTypeName?: string;
   sanctionKindCode: number;
   sanctionKindName?: string;
-  setNumber?: number;
+  delayViolationCode?: number;
+  delayViolationName?: string;
+  setNumber: number;
+  memberSeqInMatch: number;
+  homeScoreAtMoment: number;
+  guestScoreAtMoment: number;
   minuteMark?: number;
+  eventId?: number;
 }
 
 // награды
@@ -375,9 +376,12 @@ export interface Delegation {
   matchId: number;
   teamId: number;
   teamName?: string;
-  personName: string;
-  role: string;
-  isCoach: boolean;
+  roleType: string;
+  assistantSeqNo?: number;
+  lastName: string;
+  firstName: string;
+  middleName?: string;
+  fullName?: string;
 }
 
 // турнирная таблица

@@ -7,11 +7,12 @@ import type { Match, LookupDto } from '../types/index';
 const { Text } = Typography;
 
 const COLUMNS = [
-  { statusName: 'Запланирован', color: '#378ADD', bgColor: '#E6F1FB' },
-  { statusName: 'В процессе',   color: '#BA7517', bgColor: '#FAEEDA' },
-  { statusName: 'Завершён',     color: '#3B6D11', bgColor: '#EAF3DE' },
-  { statusName: 'Перенесён',    color: '#534AB7', bgColor: '#EEEDFE' },
-  { statusName: 'Отменён',      color: '#A32D2D', bgColor: '#FCEBEB' },
+  { statusName: 'Запланирован',         color: '#378ADD', bgColor: '#E6F1FB' },
+  { statusName: 'В процессе',           color: '#BA7517', bgColor: '#FAEEDA' },
+  { statusName: 'Завершён',             color: '#3B6D11', bgColor: '#EAF3DE' },
+  { statusName: 'Перенесён',            color: '#534AB7', bgColor: '#EEEDFE' },
+  { statusName: 'Отменён',              color: '#A32D2D', bgColor: '#FCEBEB' },
+  { statusName: 'Техническое поражение', color: '#722ed1', bgColor: '#f9f0ff' },
 ];
 
 interface MatchKanbanProps {
@@ -23,6 +24,9 @@ interface MatchKanbanProps {
   onEdit?: (match: Match) => void;
   onDelete?: (matchId: number) => void;
 }
+
+// нормализация статуса: ё→е, без пробелов по краям (решает проблему несовпадения из-за кодировки)
+const norm = (s: string) => s.toLowerCase().replace(/ё/g, 'е').trim();
 
 // kanban-доска матчей
 const MatchKanban: React.FC<MatchKanbanProps> = ({
@@ -45,11 +49,12 @@ const MatchKanban: React.FC<MatchKanbanProps> = ({
   const handleDrop = async (e: React.DragEvent, targetStatusName: string) => {
     e.preventDefault();
     setDragOverCol(null);
+    if (!canManage) return;
     const matchId = Number(e.dataTransfer.getData('matchId'));
     const match = matches.find(m => m.id === matchId);
-    if (!match || getStatusName(match) === targetStatusName) return;
+    if (!match || norm(getStatusName(match)) === norm(targetStatusName)) return;
 
-    const targetStatus = statuses.find(s => s.name === targetStatusName);
+    const targetStatus = statuses.find(s => norm(s.name) === norm(targetStatusName));
     if (!targetStatus) return;
 
     // оптимистичное обновление
@@ -69,7 +74,7 @@ const MatchKanban: React.FC<MatchKanbanProps> = ({
   return (
     <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8 }}>
       {COLUMNS.map(col => {
-        const colMatches = matches.filter(m => getStatusName(m) === col.statusName);
+        const colMatches = matches.filter(m => norm(getStatusName(m)) === norm(col.statusName));
         const isDragOver = dragOverCol === col.statusName;
 
         return (
@@ -156,8 +161,8 @@ const MatchKanbanCard: React.FC<KanbanCardProps> = ({
   onDelete,
   navigate,
 }) => {
-  const isLive = match.statusName === 'В процессе';
-  const isDone = match.statusName === 'Завершён';
+  const isLive = norm(match.statusName ?? '') === norm('В процессе');
+  const isDone = norm(match.statusName ?? '') === norm('Завершён');
 
   const menuItems = [
     { key: 'view', icon: <EyeOutlined />, label: 'Детали', onClick },

@@ -18,15 +18,20 @@ const AXES = [
 
 const N = AXES.length;
 
+// sqrt-масштаб: маленькие значения выглядят заметнее, шкала одинакова при сравнении
+function scaledR(val: number, max: number, radius: number): number {
+  return Math.sqrt(Math.min(val / max, 1)) * radius;
+}
+
 // радар-карта статистики игрока (чистый SVG)
 const PlayerRadarChart: React.FC<PlayerRadarChartProps> = ({
   stats,
   compareStats,
-  size = 220,
+  size = 320,
 }) => {
   const cx = size / 2;
   const cy = size / 2;
-  const radius = (size / 2) - 32;
+  const radius = (size / 2) - 44;
 
   const angle = (i: number) => (Math.PI / 2) + (2 * Math.PI * i / N);
   const point = (i: number, r: number) => ({
@@ -41,12 +46,11 @@ const PlayerRadarChart: React.FC<PlayerRadarChartProps> = ({
       .map(p => `${p.x},${p.y}`)
       .join(' ');
 
-  // данные игрока
+  // данные (sqrt-масштаб)
   const statsPolygon = (s: PlayerStats) =>
     AXES.map((ax, i) => {
       const val = (s as unknown as Record<string, number>)[ax.key] ?? 0;
-      const r = Math.min(val / ax.max, 1) * radius;
-      return point(i, r);
+      return point(i, scaledR(val, ax.max, radius));
     }).map(p => `${p.x},${p.y}`).join(' ');
 
   return (
@@ -78,7 +82,7 @@ const PlayerRadarChart: React.FC<PlayerRadarChartProps> = ({
 
       {/* подписи осей */}
       {AXES.map((ax, i) => {
-        const labelR = radius + 18;
+        const labelR = radius + 24;
         const p = point(i, labelR);
         return (
           <text
@@ -87,8 +91,9 @@ const PlayerRadarChart: React.FC<PlayerRadarChartProps> = ({
             y={p.y}
             textAnchor="middle"
             dominantBaseline="middle"
-            fontSize={10}
-            fill="#666"
+            fontSize={12}
+            fill="#444"
+            fontWeight={600}
           >
             {ax.label}
           </text>
@@ -114,30 +119,61 @@ const PlayerRadarChart: React.FC<PlayerRadarChartProps> = ({
         strokeWidth={1.5}
       />
 
-      {/* точки и значения игрока */}
+      {/* точки и значения — рядом с точкой данных, не у подписи оси */}
       {AXES.map((ax, i) => {
         const val = (stats as unknown as Record<string, number>)[ax.key] ?? 0;
-        const r = Math.min(val / ax.max, 1) * radius;
+        const r = scaledR(val, ax.max, radius);
         const p = point(i, r);
-        const labelR = radius + 18;
-        const lp = point(i, labelR);
-        const offsetX = lp.x > cx + 2 ? 5 : lp.x < cx - 2 ? -5 : 0;
-        const offsetY = lp.y > cy + 2 ? 10 : lp.y < cy - 2 ? -4 : 4;
+        if (val === 0) {
+          return <circle key={i} cx={p.x} cy={p.y} r={3} fill="#1677ff" />;
+        }
+        // значение: 14px за точкой, но не ближе 10px к краю оси (не налезает на подпись)
+        const outR = r + 14;
+        const vp = outR > radius - 10
+          ? point(i, Math.max(r - 14, 6))  // внутрь, если близко к краю
+          : point(i, outR);
         return (
           <g key={i}>
-            <circle cx={p.x} cy={p.y} r={3} fill="#1677ff" />
+            <circle cx={p.x} cy={p.y} r={3.5} fill="#1677ff" />
             <text
-              x={lp.x + offsetX}
-              y={lp.y + offsetY}
+              x={vp.x}
+              y={vp.y}
               textAnchor="middle"
               dominantBaseline="middle"
-              fontSize={9}
+              fontSize={10}
               fontWeight={700}
               fill="#1677ff"
             >
               {val}
             </text>
           </g>
+        );
+      })}
+
+      {/* значения сравниваемого игрока */}
+      {compareStats && AXES.map((ax, i) => {
+        const val = (compareStats as unknown as Record<string, number>)[ax.key] ?? 0;
+        const r = scaledR(val, ax.max, radius);
+        const p = point(i, r);
+        if (val === 0) return null;
+        const outR = r + 14;
+        const vp = outR > radius - 10
+          ? point(i, Math.max(r - 14, 6))
+          : point(i, outR);
+        return (
+          <text
+            key={`cmp-${i}`}
+            x={vp.x + 2}
+            y={vp.y - 10}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize={9}
+            fontWeight={600}
+            fill="#BA7517"
+            opacity={0.9}
+          >
+            {val}
+          </text>
         );
       })}
     </svg>

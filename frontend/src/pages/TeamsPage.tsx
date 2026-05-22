@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+﻿import React, { useEffect, useState, useMemo } from 'react';
 import {
   Table, Button, Modal, Form, Input, Select, Space, Popconfirm,
   App, Typography, Row, Col, Avatar, Tree, Tag, Tooltip,
@@ -476,7 +476,7 @@ const TeamsPage: React.FC = () => {
         okText={editRecord ? 'Сохранить' : 'Создать'}
         cancelText="Отмена"
         width={600}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={teamForm} layout="vertical" style={{ marginTop: 16 }}>
           <Row gutter={16}>
@@ -538,7 +538,7 @@ const TeamsPage: React.FC = () => {
         okText={editPlayer ? 'Сохранить' : 'Добавить'}
         cancelText="Отмена"
         width={560}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={playerForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="teamId" hidden><Input /></Form.Item>

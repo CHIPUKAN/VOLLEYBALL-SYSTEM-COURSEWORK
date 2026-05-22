@@ -8,6 +8,8 @@ interface MatchTimelineProps {
   matchId: number;
   events: MatchEvent[];
   sets: SetDto[];
+  homeTeamId: number;
+  guestTeamId: number;
   homeTeamName: string;
   guestTeamName: string;
 }
@@ -27,6 +29,8 @@ const DEFAULT_STYLE = { icon: '●', color: '#aaa', label: 'Событие' };
 const MatchTimeline: React.FC<MatchTimelineProps> = ({
   events,
   sets,
+  homeTeamId,
+  guestTeamId,
   homeTeamName,
   guestTeamName,
 }) => {
@@ -46,8 +50,6 @@ const MatchTimeline: React.FC<MatchTimelineProps> = ({
         const setData = sets.find(s => s.setNumber === setNum);
         const total = setEvents.length || 1;
 
-        const guestTeamId = setEvents.find(e => e.teamId)?.teamId;
-
         return (
           <div key={setNum} style={{ marginBottom: 24 }}>
             <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -65,15 +67,15 @@ const MatchTimeline: React.FC<MatchTimelineProps> = ({
                 {homeTeamName}
               </Text>
               <div style={{ position: 'relative', height: 28, background: 'rgba(22,119,255,0.08)', borderRadius: 4, display: 'inline-block', width: 'calc(100% - 84px)' }}>
-                {setEvents.filter(e => !e.isTeamEvent || e.teamId).map(ev => {
+                {setEvents.map(ev => {
                   const style = EVENT_STYLES[ev.eventTypeName ?? ''] ?? DEFAULT_STYLE;
-                  const pct = ((ev.seqInMatch - setEvents[0].seqInMatch) / total) * 100;
+                  const pct = ((ev.globalSeqInSet - setEvents[0].globalSeqInSet) / total) * 100;
                   const isHome = ev.teamId !== guestTeamId;
                   if (!isHome) return null;
                   return (
                     <Tooltip
                       key={ev.id}
-                      title={`${ev.eventTypeName ?? '?'} — ${ev.playerFullName ?? ev.teamName ?? '—'} · ${ev.homeScoreAtMoment}:${ev.guestScoreAtMoment}`}
+                      title={`${ev.eventTypeName ?? '?'} — ${ev.teamName ?? '—'} · ${ev.homeScoreAtMoment}:${ev.guestScoreAtMoment}`}
                     >
                       <span style={{
                         position: 'absolute',
@@ -101,13 +103,13 @@ const MatchTimeline: React.FC<MatchTimelineProps> = ({
               <div style={{ position: 'relative', height: 28, background: 'rgba(250,100,0,0.08)', borderRadius: 4, display: 'inline-block', width: 'calc(100% - 84px)' }}>
                 {setEvents.map(ev => {
                   const style = EVENT_STYLES[ev.eventTypeName ?? ''] ?? DEFAULT_STYLE;
-                  const pct = ((ev.seqInMatch - setEvents[0].seqInMatch) / total) * 100;
+                  const pct = ((ev.globalSeqInSet - setEvents[0].globalSeqInSet) / total) * 100;
                   const isGuest = ev.teamId === guestTeamId;
                   if (!isGuest) return null;
                   return (
                     <Tooltip
                       key={ev.id}
-                      title={`${ev.eventTypeName ?? '?'} — ${ev.playerFullName ?? ev.teamName ?? '—'} · ${ev.homeScoreAtMoment}:${ev.guestScoreAtMoment}`}
+                      title={`${ev.eventTypeName ?? '?'} — ${ev.teamName ?? '—'} · ${ev.homeScoreAtMoment}:${ev.guestScoreAtMoment}`}
                     >
                       <span style={{
                         position: 'absolute',

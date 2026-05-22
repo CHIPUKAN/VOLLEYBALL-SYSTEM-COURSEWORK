@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+﻿import React, { useEffect, useState, useMemo } from 'react';
 import {
   Table, Button, Modal, Form, Input, Select, Space, Popconfirm,
   App, Typography, Row, Col, InputNumber, DatePicker, Tag, Radio,
@@ -15,12 +15,13 @@ import { useAuth } from '../context/AuthContext';
 const { Title } = Typography;
 const { Search } = Input;
 
-// цвета статусов игрока
-const STATUS_COLORS: Record<string, string> = {
-  Активный: 'green',
-  Дисквалифицирован: 'red',
-  Травмирован: 'orange',
-  Завершил: 'default',
+// цвета статусов игрока (ключи — коды из s2_player_statuses)
+const STATUS_COLORS: Record<number, string> = {
+  1: 'green',   // Активен
+  2: 'cyan',    // Заявлен
+  3: 'red',     // Дисквалифицирован
+  4: 'orange',  // Травмирован
+  5: 'default', // Покинул команду
 };
 
 // страница управления игроками
@@ -194,10 +195,9 @@ const PlayersPage: React.FC = () => {
     },
     {
       title: 'Статус',
-      dataIndex: 'statusName',
-      key: 'statusName',
-      render: (name: string) => (
-        <Tag color={STATUS_COLORS[name] ?? 'default'}>{name ?? '—'}</Tag>
+      key: 'statusCode',
+      render: (_: unknown, r: Player) => (
+        <Tag color={STATUS_COLORS[r.statusCode] ?? 'default'}>{r.statusName ?? '—'}</Tag>
       ),
     },
     {
@@ -386,7 +386,7 @@ const PlayersPage: React.FC = () => {
         okText={editRecord ? 'Сохранить' : 'Создать'}
         cancelText="Отмена"
         width={700}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Row gutter={16}>

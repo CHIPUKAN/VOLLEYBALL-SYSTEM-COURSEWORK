@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Card, Tabs, Table, Typography, Button, Spin, Tag, Descriptions,
@@ -26,6 +26,7 @@ import type {
 } from '../types/index';
 import type { LookupDto, LookupItemDto } from '../types/index';
 import { useAuth } from '../context/AuthContext';
+import { getApiError } from '../utils/apiError';
 import VolleyCourt from '../components/VolleyCourt';
 import LiveMatchPanel from '../components/LiveMatchPanel';
 import PreMatchWizard from '../components/PreMatchWizard';
@@ -115,6 +116,9 @@ const MatchDetailPage: React.FC = () => {
   const [homePlayers, setHomePlayers] = useState<LookupItemDto[]>([]);
   const [guestPlayers, setGuestPlayers] = useState<LookupItemDto[]>([]);
 
+  // выбранная команда в форме санкции (для фильтрации игроков)
+  const [selectedSanctionTeamId, setSelectedSanctionTeamId] = useState<number | undefined>();
+
   // live-матч
   const [liveMatchOpen, setLiveMatchOpen] = useState(false);
   const [preWizardOpen, setPreWizardOpen] = useState(false);
@@ -200,9 +204,13 @@ const MatchDetailPage: React.FC = () => {
     setLoadingProtocol(true);
     try {
       const [data, statuses] = await Promise.all([
-        protocolsApi.getByMatch(matchId).catch(() => null),
+        protocolsApi.getByMatch(matchId).catch((e: unknown) => {
+          if (import.meta.env.DEV) console.warn('[Protocol] getByMatch error:', e);
+          return null;
+        }),
         lookupsApi.getProtocolStatuses(),
       ]);
+      if (import.meta.env.DEV) console.log('[Protocol] loaded:', data, '| statuses:', statuses);
       setProtocol(data);
       setProtocolStatuses(statuses);
     } catch { setProtocol(null); } finally { setLoadingProtocol(false); }
@@ -232,12 +240,16 @@ const MatchDetailPage: React.FC = () => {
     try {
       const data = await captainsApi.getAll(matchId);
       setCaptains(data);
-      const home = data.find(c => match && c.teamId === match.homeTeamId);
-      const guest = data.find(c => match && c.teamId === match.guestTeamId);
-      setHomeCaptainId(home?.playerId);
-      setGuestCaptainId(guest?.playerId);
+      setMatch(prev => {
+        if (!prev) return prev;
+        const home = data.find(c => c.teamId === prev.homeTeamId);
+        const guest = data.find(c => c.teamId === prev.guestTeamId);
+        setHomeCaptainId(home?.playerId);
+        setGuestCaptainId(guest?.playerId);
+        return prev;
+      });
     } catch { message.error('Ошибка загрузки капитанов'); } finally { setLoadingCaptains(false); }
-  }, [matchId, match]);
+  }, [matchId]);
 
   const loadStats = useCallback(async () => {
     setLoadingStats(true);
@@ -264,7 +276,7 @@ const MatchDetailPage: React.FC = () => {
       loadSets();
       loadProtocol();
     }
-  }, [matchId]);
+  }, [matchId, loadSets, loadProtocol]);
 
   const handleTabChange = (key: string) => {
     if (key === 'sets' && sets.length === 0) loadSets();
@@ -295,7 +307,7 @@ const MatchDetailPage: React.FC = () => {
       message.success('Партия сохранена');
       setSetModalOpen(false);
       loadSets();
-    } catch { message.error('Ошибка сохранения партии'); } finally { setSavingSet(false); }
+    } catch (err) { message.error(getApiError(err, 'Ошибка сохранения партии')); } finally { setSavingSet(false); }
   };
 
   const handleDeleteSet = async (setNumber: number) => {
@@ -324,9 +336,11 @@ const MatchDetailPage: React.FC = () => {
     if (sanction) {
       setEditSanction(sanction);
       sanctionForm.setFieldsValue(sanction);
+      setSelectedSanctionTeamId(sanction.teamId);
     } else {
       setEditSanction(null);
       sanctionForm.resetFields();
+      setSelectedSanctionTeamId(undefined);
     }
     setSanctionModalOpen(true);
   };
@@ -345,41 +359,48 @@ const MatchDetailPage: React.FC = () => {
       }
       setSanctionModalOpen(false);
       loadSanctions();
-    } catch { message.error('Ошибка сохранения'); } finally { setSavingSanction(false); }
+    } catch (err) { message.error(getApiError(err, 'Ошибка сохранения санкции')); } finally { setSavingSanction(false); }
   };
 
   // операции с протоколом
   const openProtocolModal = () => {
     protocolForm.resetFields();
     if (protocol) {
-      protocolForm.setFieldsValue({
-        statusCode: protocol.statusCode,
-        homeScore: protocol.homeScore,
-        guestScore: protocol.guestScore,
-      });
+      protocolForm.setFieldsValue({ statusCode: protocol.statusCode });
     } else {
-      const homeWins = sets.filter(s => s.homeScore > s.guestScore).length;
-      const guestWins = sets.filter(s => s.guestScore > s.homeScore).length;
-      protocolForm.setFieldsValue({ statusCode: 1, homeScore: homeWins, guestScore: guestWins });
+      protocolForm.setFieldsValue({ statusCode: 1 });
     }
     setProtocolModalOpen(true);
   };
 
   const handleSaveProtocol = async () => {
     let values: Record<string, unknown>;
-    try { values = await protocolForm.validateFields(); } catch { return; }
+    try {
+      values = await protocolForm.validateFields();
+    } catch {
+      message.warning('Заполните все обязательные поля протокола');
+      return;
+    }
+    if (import.meta.env.DEV) console.log('[Protocol] save values:', values);
     setSavingProtocol(true);
     try {
       if (protocol) {
         await protocolsApi.update(protocol.id, values);
         message.success('Протокол обновлён');
       } else {
-        await protocolsApi.create({ matchId, ...values });
+        const created = await protocolsApi.create({ matchId, ...values });
+        if (import.meta.env.DEV) console.log('[Protocol] created:', created);
         message.success('Протокол создан');
       }
       setProtocolModalOpen(false);
       loadProtocol();
-    } catch { message.error('Ошибка сохранения протокола'); } finally { setSavingProtocol(false); }
+    } catch (err: unknown) {
+      const axErr = err as { response?: { data?: { message?: string }; status?: number } };
+      const detail = axErr.response?.data?.message ?? (err instanceof Error ? err.message : '');
+      message.error(detail ? `Ошибка протокола: ${detail}` : 'Ошибка сохранения протокола');
+    } finally {
+      setSavingProtocol(false);
+    }
   };
 
   // операции с судьями
@@ -393,7 +414,7 @@ const MatchDetailPage: React.FC = () => {
       setRefModalOpen(false);
       refForm.resetFields();
       loadReferees();
-    } catch { message.error('Ошибка назначения'); } finally { setSavingRef(false); }
+    } catch (err) { message.error(getApiError(err, 'Ошибка назначения судьи')); } finally { setSavingRef(false); }
   };
 
   const handleDeleteRef = async (refId: number) => {
@@ -408,7 +429,13 @@ const MatchDetailPage: React.FC = () => {
   const openDelModal = (del?: Delegation) => {
     if (del) {
       setEditDelegation(del);
-      delForm.setFieldsValue(del);
+      delForm.setFieldsValue({
+        teamId: del.teamId,
+        lastName: del.lastName,
+        firstName: del.firstName,
+        middleName: del.middleName,
+        roleType: del.roleType,
+      });
     } else {
       setEditDelegation(null);
       delForm.resetFields();
@@ -430,7 +457,7 @@ const MatchDetailPage: React.FC = () => {
       }
       setDelModalOpen(false);
       loadDelegations();
-    } catch { message.error('Ошибка сохранения'); } finally { setSavingDel(false); }
+    } catch (err) { message.error(getApiError(err, 'Ошибка сохранения делегации')); } finally { setSavingDel(false); }
   };
 
   // операции с капитанами
@@ -441,7 +468,7 @@ const MatchDetailPage: React.FC = () => {
       await captainsApi.upsert(matchId, { teamId, playerId });
       message.success('Капитан сохранён');
       loadCaptains();
-    } catch { message.error('Ошибка сохранения'); } finally { setSavingCaptain(false); }
+    } catch (err) { message.error(getApiError(err, 'Ошибка сохранения капитана')); } finally { setSavingCaptain(false); }
   };
 
   const deleteCaptain = async (teamId: number) => {
@@ -468,20 +495,19 @@ const MatchDetailPage: React.FC = () => {
   const handleSaveStat = async () => {
     let values: Record<string, unknown>;
     try { values = await statsForm.validateFields(); } catch { return; }
-    // вычисляем итоговые очки автоматически
-    values.totalPoints = (Number(values.aces) || 0) + (Number(values.attackPoints) || 0) + (Number(values.blocks) || 0);
+    // totalPoints вводится вручную секретарём или берётся из поля формы
     setSavingStat(true);
     try {
       await playerStatsApi.upsert(matchId, { matchId, ...values });
       message.success('Статистика сохранена');
       setStatsModalOpen(false);
       loadStats();
-    } catch { message.error('Ошибка сохранения'); } finally { setSavingStat(false); }
+    } catch (err) { message.error(getApiError(err, 'Ошибка сохранения статистики')); } finally { setSavingStat(false); }
   };
 
-  // вычисления
-  const homeWins = sets.filter((s) => s.homeScore > s.guestScore).length;
-  const guestWins = sets.filter((s) => s.guestScore > s.homeScore).length;
+  // вычисления (защита от null, т.к. БД допускает nullable счёт)
+  const homeWins = sets.filter((s) => s.homeScore != null && s.guestScore != null && s.homeScore > s.guestScore).length;
+  const guestWins = sets.filter((s) => s.homeScore != null && s.guestScore != null && s.guestScore > s.homeScore).length;
 
   // колонки таблиц
   const setsColumns: ColumnsType<SetDto> = [
@@ -512,10 +538,9 @@ const MatchDetailPage: React.FC = () => {
 
   const eventsColumns: ColumnsType<MatchEvent> = [
     { title: 'Партия', dataIndex: 'setNumber', key: 'setNumber', width: 70 },
-    { title: '№', dataIndex: 'seqInMatch', key: 'seqInMatch', width: 60 },
+    { title: '№', dataIndex: 'globalSeqInSet', key: 'globalSeqInSet', width: 60 },
     { title: 'Тип', dataIndex: 'eventTypeName', key: 'eventTypeName', render: (v: string, r: MatchEvent) => v ?? r.eventTypeCode },
     { title: 'Команда', dataIndex: 'teamName', key: 'teamName', render: (v: string) => v ?? '—' },
-    { title: 'Игрок', dataIndex: 'playerFullName', key: 'playerFullName', render: (v: string) => v ?? '—' },
     { title: 'Счёт', key: 'score', render: (_: unknown, r: MatchEvent) => `${r.homeScoreAtMoment}:${r.guestScoreAtMoment}` },
     { title: 'Мин.', dataIndex: 'minuteMark', key: 'minuteMark', width: 60, render: (v: number) => v ?? '—' },
     {
@@ -562,9 +587,8 @@ const MatchDetailPage: React.FC = () => {
 
   const delColumns: ColumnsType<Delegation> = [
     { title: 'Команда', dataIndex: 'teamName', key: 'teamName' },
-    { title: 'Имя', dataIndex: 'personName', key: 'personName' },
-    { title: 'Роль', dataIndex: 'role', key: 'role' },
-    { title: 'Тренер', dataIndex: 'isCoach', key: 'isCoach', render: (v: boolean) => v ? <Tag color="blue">Тренер</Tag> : '—' },
+    { title: 'ФИО', dataIndex: 'fullName', key: 'fullName', render: (v: string) => v ?? '—' },
+    { title: 'Роль', dataIndex: 'roleType', key: 'roleType' },
     {
       title: '', key: 'actions', width: 80,
       render: (_: unknown, rec: Delegation) => can('manageDelegation') ? (
@@ -836,6 +860,8 @@ const MatchDetailPage: React.FC = () => {
                       matchId={matchId}
                       events={events}
                       sets={sets}
+                      homeTeamId={match.homeTeamId}
+                      guestTeamId={match.guestTeamId}
                       homeTeamName={match.homeTeamName ?? 'Хозяева'}
                       guestTeamName={match.guestTeamName ?? 'Гости'}
                     />
@@ -1008,7 +1034,7 @@ const MatchDetailPage: React.FC = () => {
                         {protocol ? 'Редактировать протокол' : 'Создать протокол'}
                       </Button>
                     )}
-                    {protocol?.approvedAt && (
+                    {(match.statusCode === 3 || !!protocol) && (
                       <Button icon={<QrcodeOutlined />} onClick={() => setQrModalOpen(true)}>
                         QR-код
                       </Button>
@@ -1021,14 +1047,11 @@ const MatchDetailPage: React.FC = () => {
                       </Descriptions.Item>
                       <Descriptions.Item label="Итоговый счёт">
                         <Text strong style={{ fontSize: 20 }}>
-                          {protocol.homeScore} : {protocol.guestScore}
+                          {homeWins} : {guestWins}
                         </Text>
                       </Descriptions.Item>
-                      <Descriptions.Item label="Создан">
-                        {protocol.createdAt ? dayjs(protocol.createdAt).format('DD.MM.YYYY HH:mm') : '—'}
-                      </Descriptions.Item>
                       <Descriptions.Item label="Утверждён">
-                        {protocol.approvedAt ? dayjs(protocol.approvedAt).format('DD.MM.YYYY HH:mm') : 'Не утверждён'}
+                        {protocol.approvalDate ? dayjs(protocol.approvalDate).format('DD.MM.YYYY') : 'Не утверждён'}
                       </Descriptions.Item>
                     </Descriptions>
                   ) : (
@@ -1052,7 +1075,7 @@ const MatchDetailPage: React.FC = () => {
         confirmLoading={savingSet}
         okText="Сохранить"
         cancelText="Отмена"
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={setForm} layout="vertical" style={{ marginTop: 16 }}>
           <Row gutter={12}>
@@ -1082,23 +1105,27 @@ const MatchDetailPage: React.FC = () => {
       <Modal
         title={editSanction ? 'Редактировать санкцию' : 'Добавить санкцию'}
         open={sanctionModalOpen}
-        onCancel={() => setSanctionModalOpen(false)}
+        onCancel={() => { setSanctionModalOpen(false); setSelectedSanctionTeamId(undefined); }}
         onOk={handleSaveSanction}
         confirmLoading={savingSanction}
         okText="Сохранить"
         cancelText="Отмена"
         width={560}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={sanctionForm} layout="vertical" style={{ marginTop: 16 }}>
           <Row gutter={12}>
             <Col xs={24} sm={12}>
-              <Form.Item name="teamId" label="Команда" rules={[{ required: true }]}>
+              <Form.Item name="teamId" label="Команда" rules={[{ required: true, message: 'Выберите команду' }]}>
                 <Select
                   options={[
                     { value: match.homeTeamId, label: match.homeTeamName ?? 'Хозяева' },
                     { value: match.guestTeamId, label: match.guestTeamName ?? 'Гости' },
                   ]}
+                  onChange={(v: number) => {
+                    setSelectedSanctionTeamId(v);
+                    sanctionForm.setFieldValue('playerId', undefined);
+                  }}
                 />
               </Form.Item>
             </Col>
@@ -1106,8 +1133,10 @@ const MatchDetailPage: React.FC = () => {
               <Form.Item name="playerId" label="Игрок">
                 <Select
                   allowClear
-                  placeholder="Не указан"
-                  options={allPlayers.map(p => ({ value: Number(p.id), label: p.name }))}
+                  disabled={!selectedSanctionTeamId}
+                  placeholder={selectedSanctionTeamId ? 'Не указан' : 'Сначала выберите команду'}
+                  options={(selectedSanctionTeamId === match.homeTeamId ? homePlayers : guestPlayers)
+                    .map(p => ({ value: Number(p.id), label: p.name }))}
                   showSearch
                   filterOption={(input, opt) => (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
                 />
@@ -1132,13 +1161,30 @@ const MatchDetailPage: React.FC = () => {
             </Col>
           </Row>
           <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item name="setNumber" label="Партия">
+            <Col span={8}>
+              <Form.Item name="setNumber" label="Партия" rules={[{ required: true }]}>
                 <InputNumber min={1} max={5} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col span={8}>
+              <Form.Item name="memberSeqInMatch" label="№ санкции" initialValue={1}>
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
               <Form.Item name="minuteMark" label="Минута">
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="homeScoreAtMoment" label="Счёт хозяев" initialValue={0}>
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="guestScoreAtMoment" label="Счёт гостей" initialValue={0}>
                 <InputNumber min={0} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
@@ -1155,34 +1201,12 @@ const MatchDetailPage: React.FC = () => {
         confirmLoading={savingProtocol}
         okText="Сохранить"
         cancelText="Отмена"
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={protocolForm} layout="vertical" style={{ marginTop: 16 }}>
-          <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item name="homeScore" label="Партий выиграно (хозяева)" rules={[{ required: true }]}>
-                <InputNumber
-                  min={0}
-                  max={3}
-                  style={{ width: '100%' }}
-                  readOnly={sets.length > 0}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="guestScore" label="Партий выиграно (гости)" rules={[{ required: true }]}>
-                <InputNumber
-                  min={0}
-                  max={3}
-                  style={{ width: '100%' }}
-                  readOnly={sets.length > 0}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
           {sets.length > 0 && (
             <Text type="secondary" style={{ display: 'block', marginBottom: 12, fontSize: 12 }}>
-              Счёт вычислен из партий автоматически.
+              Текущий счёт по партиям: {homeWins} : {guestWins}
             </Text>
           )}
           <Form.Item name="statusCode" label="Статус протокола" rules={[{ required: true }]}>
@@ -1200,7 +1224,7 @@ const MatchDetailPage: React.FC = () => {
         confirmLoading={savingRef}
         okText="Назначить"
         cancelText="Отмена"
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={refForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="refereeId" label="Судья" rules={[{ required: true }]}>
@@ -1226,7 +1250,7 @@ const MatchDetailPage: React.FC = () => {
         confirmLoading={savingDel}
         okText="Сохранить"
         cancelText="Отмена"
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={delForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="teamId" label="Команда" rules={[{ required: true }]}>
@@ -1237,15 +1261,23 @@ const MatchDetailPage: React.FC = () => {
               ]}
             />
           </Form.Item>
-          <Form.Item name="personName" label="Имя" rules={[{ required: true }]}>
-            <Input placeholder="Фамилия Имя" />
+          <Form.Item name="lastName" label="Фамилия" rules={[{ required: true }]}>
+            <Input placeholder="Иванов" />
           </Form.Item>
-          <Form.Item name="role" label="Роль в делегации" rules={[{ required: true }]}>
-            <Input placeholder="Тренер, врач, администратор..." />
+          <Form.Item name="firstName" label="Имя" rules={[{ required: true }]}>
+            <Input placeholder="Иван" />
           </Form.Item>
-          <Form.Item name="isCoach" label="Является тренером" initialValue={false}>
+          <Form.Item name="middleName" label="Отчество">
+            <Input placeholder="Иванович" />
+          </Form.Item>
+          <Form.Item name="roleType" label="Роль в делегации" rules={[{ required: true }]}>
             <Select
-              options={[{ value: true, label: 'Да' }, { value: false, label: 'Нет' }]}
+              options={[
+                { value: 'помощник тренера', label: 'Помощник тренера' },
+                { value: 'массажист', label: 'Массажист' },
+                { value: 'врач', label: 'Врач' },
+              ]}
+              placeholder="Выберите роль"
             />
           </Form.Item>
         </Form>
@@ -1257,7 +1289,10 @@ const MatchDetailPage: React.FC = () => {
           open={preWizardOpen}
           match={match}
           onComplete={handleStartMatch}
-          onSkip={() => {
+          onSkip={async () => {
+            // statusCode 2 = В процессе
+            try { await matchesApi.update(matchId, { ...match, statusCode: 2 }); } catch { /* не блокирует */ }
+            setMatch(prev => prev ? { ...prev, statusCode: 2, statusName: 'В процессе' } : prev);
             setPreWizardOpen(false);
             setLiveMatchOpen(true);
           }}
@@ -1287,8 +1322,8 @@ const MatchDetailPage: React.FC = () => {
           matchId={matchId}
           homeTeamName={match.homeTeamName ?? 'Хозяева'}
           guestTeamName={match.guestTeamName ?? 'Гости'}
-          homeScore={protocol.homeScore}
-          guestScore={protocol.guestScore}
+          homeScore={homeWins}
+          guestScore={guestWins}
           onClose={() => setQrModalOpen(false)}
         />
       )}
@@ -1299,8 +1334,8 @@ const MatchDetailPage: React.FC = () => {
         open={radarCompareOpen}
         onCancel={() => { setRadarCompareOpen(false); setRadarStatsA(null); setRadarStatsB(null); setRadarPlayerAId(undefined); setRadarPlayerBId(undefined); }}
         footer={null}
-        width={560}
-        destroyOnClose
+        width={680}
+        destroyOnHidden
       >
         <Row gutter={16} style={{ marginBottom: 16 }}>
           <Col span={12}>
@@ -1335,7 +1370,7 @@ const MatchDetailPage: React.FC = () => {
             <PlayerRadarChart
               stats={radarStatsA}
               compareStats={radarStatsB ?? undefined}
-              size={280}
+              size={360}
             />
           </div>
         ) : (
@@ -1355,7 +1390,7 @@ const MatchDetailPage: React.FC = () => {
         okText="Сохранить"
         cancelText="Отмена"
         width={600}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={statsForm} layout="vertical" style={{ marginTop: 16 }}>
           <Row gutter={12}>

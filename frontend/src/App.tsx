@@ -20,6 +20,7 @@ import MatchDetailPage from './pages/MatchDetailPage';
 import AwardsPage from './pages/AwardsPage';
 import ApplicationsPage from './pages/ApplicationsPage';
 import StandingsPage from './pages/StandingsPage';
+import NotFoundPage from './pages/NotFoundPage';
 
 // компонент защищённого маршрута
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -63,8 +64,8 @@ const App: React.FC = () => {
         <Route path="standings" element={<StandingsPage />} />
       </Route>
 
-      {/* перенаправление неизвестных маршрутов */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* страница 404 */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 };

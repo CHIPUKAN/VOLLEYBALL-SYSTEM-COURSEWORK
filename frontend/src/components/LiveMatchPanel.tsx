@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Modal, Row, Col, Card, Typography, Button, Tag, App, List, Popconfirm, Space, Badge,
 } from 'antd';
@@ -8,15 +8,22 @@ import type {
   CoinTossResult, LiveMatchState, ActionResult,
 } from '../types/index';
 import {
-  eventsApi, lineupsApi, playersApi, setsApi,
+  eventsApi, lineupsApi, playersApi, setsApi, matchesApi,
 } from '../api/index';
 import { lookupsApi } from '../api/lookupsApi';
 import LiveCourtView from './LiveCourtView';
 import ActionPickerModal from './ActionPickerModal';
 import SubstitutionModal from './SubstitutionModal';
+import type { SubPair } from './SubstitutionModal';
 import SanctionQuickModal from './SanctionQuickModal';
 import RotationIndicator from './RotationIndicator';
 import { sanctionsApi } from '../api/index';
+import { getApiError } from '../utils/apiError';
+
+// dev-only логгер (только в режиме разработки, не попадает в prod-сборку)
+const log = import.meta.env.DEV
+  ? (...args: unknown[]) => console.log('[LiveMatch]', ...args)
+  : () => {};
 
 // событие в офлайн-буфере
 interface PendingEvent {
@@ -73,6 +80,8 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
   const [sanctionKinds, setSanctionKinds] = useState<LookupDto[]>([]);
   const [recipientTypes, setRecipientTypes] = useState<LookupDto[]>([]);
   const [allPlayersLookup, setAllPlayersLookup] = useState<LookupItemDto[]>([]);
+  const [homePlayersLookup, setHomePlayersLookup] = useState<LookupItemDto[]>([]);
+  const [guestPlayersLookup, setGuestPlayersLookup] = useState<LookupItemDto[]>([]);
 
   // UI стейт
   const [selectedPlayer, setSelectedPlayer] = useState<StartingLineup | null>(null);
@@ -81,8 +90,15 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
   const [actionPickerOpen, setActionPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // ротация 
+  // ротация
   const [rotationTeam, setRotationTeam] = useState<number | null>(null);
+
+  // дефолтный игрок для модала замены (при открытии через правый клик)
+  const [subDefaultPlayerId, setSubDefaultPlayerId] = useState<number | undefined>();
+  const [subDefaultTeamId, setSubDefaultTeamId] = useState<number | undefined>();
+
+  // история замен: setNumber → [{out, in}] — для контроля повторных выходов
+  const [subPairsPerSet, setSubPairsPerSet] = useState<Map<number, { out: number; in: number }[]>>(new Map());
 
   // подсказки горячих клавиш
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -95,6 +111,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
   const [pendingQueue, setPendingQueue] = useState<PendingEvent[]>([]);
 
   const timeoutTypesRef = useRef<LookupDto[]>([]);
+  const nextSetServingRef = useRef<number | undefined>(undefined);
 
   // офлайн/онлайн
   useEffect(() => {
@@ -116,19 +133,22 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
       const queue = [...pendingQueue];
       setPendingQueue([]);
       for (const ev of queue) {
-        const evType = eventTypes.find(et =>
-          et.name.toLowerCase() === ev.actionResult.eventTypeName.toLowerCase()
-        );
+        let dbName: string | null = null;
+        if (ev.actionResult.scoringEffect === 'acting') {
+          dbName = ev.actingTeamId === match.homeTeamId ? 'Очко хозяев' : 'Очко гостей';
+        } else if (ev.actionResult.scoringEffect === 'opposing') {
+          dbName = ev.actingTeamId === match.homeTeamId ? 'Очко гостей' : 'Очко хозяев';
+        }
+        const evType = dbName ? eventTypes.find(et => et.name === dbName) : null;
+        if (!evType) continue; // нейтральные события не пишем
         try {
           await eventsApi.create(match.id, {
             setNumber: ev.setNumber,
-            eventTypeCode: evType?.code ?? 1,
+            eventTypeCode: evType.code,
             teamId: ev.actingTeamId,
-            playerId: ev.player?.playerId,
             homeScoreAtMoment: ev.homeScore,
             guestScoreAtMoment: ev.guestScore,
-            seqInMatch: ev.seqInMatch,
-            isTeamEvent: false,
+            globalSeqInSet: ev.seqInMatch,
           });
         } catch { /* некритично */ }
       }
@@ -156,7 +176,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') { undoLastEvent(); return; }
       if (e.key === 'T' && e.shiftKey) { recordTimeout(match.guestTeamId); return; }
       if (e.key === 't') { recordTimeout(match.homeTeamId); return; }
-      if (e.key === 's') { setSubModalOpen(true); return; }
+      if (e.key === 's') { setSubDefaultPlayerId(undefined); setSubDefaultTeamId(undefined); setSubModalOpen(true); return; }
       if (e.key === 'r') { setSanctionModalOpen(true); return; }
       if ((e.key === ' ' || e.key === 'Enter') && selectedPlayer) {
         setActionPickerOpen(true);
@@ -202,6 +222,8 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
         setSanctionTypes(sanTypesData);
         setSanctionKinds(sanKindsData);
         setRecipientTypes(recTypesData);
+        setHomePlayersLookup(homeLookup);
+        setGuestPlayersLookup(guestLookup);
         setAllPlayersLookup([...homeLookup, ...guestLookup]);
 
         // вычислить текущий счёт из событий
@@ -254,6 +276,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
 
   // запись события
   const recordEvent = async (actingTeamId: number, player: StartingLineup | null, actionResult: ActionResult) => {
+    log('recordEvent →', { team: actingTeamId, player: player?.playerId, pos: player?.positionNo, action: actionResult.code });
     setSaving(true);
     try {
       const cs = liveState.sets[liveState.currentSetNumber - 1] ?? { homeScore: 0, guestScore: 0 };
@@ -268,10 +291,24 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
         else newHomeScore++;
       }
 
-      const evType = eventTypes.find(et =>
-        et.name.toLowerCase() === actionResult.eventTypeName.toLowerCase()
-      );
-      const eventTypeCode = evType?.code ?? 1;
+      // определяем тип события по DB-именам (только 'Очко хозяев' / 'Очко гостей' имеют смысл)
+      let dbEventTypeName: string | null = null;
+      if (actionResult.scoringEffect === 'acting') {
+        dbEventTypeName = actingTeamId === match.homeTeamId ? 'Очко хозяев' : 'Очко гостей';
+      } else if (actionResult.scoringEffect === 'opposing') {
+        dbEventTypeName = actingTeamId === match.homeTeamId ? 'Очко гостей' : 'Очко хозяев';
+      }
+      const evType = dbEventTypeName
+        ? eventTypes.find(et => et.name === dbEventTypeName)
+        : null;
+      // нейтральные события (нет очков) не пишутся в БД
+      const eventTypeCode = evType?.code ?? null;
+
+      // порядковый номер = max по текущей партии + 1
+      const maxSeqInSet = Math.max(0, ...recentEvents
+        .filter(e => e.setNumber === liveState.currentSetNumber)
+        .map(e => e.globalSeqInSet ?? 0));
+      const nextGlobalSeq = maxSeqInSet + 1;
 
       const newServingTeamId = actionResult.scoringEffect === 'neutral'
         ? servingTeamId
@@ -291,17 +328,17 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
         };
         setPendingQueue(q => [...q, pending]);
         message.warning('Офлайн: событие добавлено в очередь');
-      } else {
+      } else if (eventTypeCode != null) {
+        log('POST event:', { eventTypeCode, team: actingTeamId, score: `${newHomeScore}:${newGuestScore}` });
         const newEvent = await eventsApi.create(match.id, {
           setNumber: liveState.currentSetNumber,
           eventTypeCode,
           teamId: actingTeamId,
-          playerId: player?.playerId,
           homeScoreAtMoment: newHomeScore,
           guestScoreAtMoment: newGuestScore,
-          seqInMatch: recentEvents.length + 1,
-          isTeamEvent: false,
+          globalSeqInSet: nextGlobalSeq,
         });
+        log('Event created:', newEvent);
         setRecentEvents(prev => [newEvent, ...prev].slice(0, 50));
       }
 
@@ -329,11 +366,24 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
           onOk: () => finishCurrentSet(newHomeScore, newGuestScore),
         });
       }
-    } catch {
-      message.error('Ошибка записи события');
+    } catch (err: unknown) {
+      const axErr = err as { response?: { data?: { message?: string }; status?: number } };
+      const detail = axErr.response?.data?.message ?? (err instanceof Error ? err.message : '');
+      const status = axErr.response?.status;
+      if (status === 401 || status === 403) {
+        message.error('Нет прав для записи события (требуется роль СекретарьМатча)');
+      } else {
+        message.error(detail ? `Ошибка: ${detail}` : 'Ошибка записи события');
+      }
     } finally {
       setSaving(false);
     }
+  };
+
+  // быстрое очко без выбора игрока
+  const quickScore = (teamId: number) => {
+    const result: ActionResult = { code: 'point_us', label: 'Очко', icon: '⊕', scoringEffect: 'acting', eventTypeName: 'Техническое очко' };
+    recordEvent(teamId, null, result);
   };
 
   // завершение партии
@@ -347,7 +397,11 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
       const newGuestMatchScore = liveState.guestMatchScore + (homeWon ? 0 : 1);
 
       if (newHomeMatchScore >= 3 || newGuestMatchScore >= 3) {
-        message.success('Матч завершён!');
+        try {
+          // statusCode 3 = Завершён (MatchStatusCodes.Completed)
+          await matchesApi.update(match.id, { ...match, statusCode: 3 });
+        } catch { /* не блокирует завершение */ }
+        message.success('Матч завершён! Статус обновлён.');
         setLiveState(prev => ({
           ...prev,
           homeMatchScore: newHomeMatchScore,
@@ -357,6 +411,66 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
       }
 
       const nextSetNumber = setNumber + 1;
+      // по умолчанию подаёт команда, выбравшая подачу на жеребьёвке
+      const defaultNextServing = initialState?.servingTeamId ?? match.homeTeamId;
+      nextSetServingRef.current = defaultNextServing;
+
+      await new Promise<void>(resolve => {
+        modal.confirm({
+          title: `Кто подаёт первым в партии ${nextSetNumber}?`,
+          content: (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[
+                  { id: match.homeTeamId, name: match.homeTeamName ?? 'Хозяева' },
+                  { id: match.guestTeamId, name: match.guestTeamName ?? 'Гости' },
+                ].map(t => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    id={`next-serve-${t.id}`}
+                    onClick={() => {
+                      nextSetServingRef.current = t.id;
+                      document.querySelectorAll('[id^="next-serve-"]').forEach(el => {
+                        (el as HTMLButtonElement).style.background = '#fff';
+                        (el as HTMLButtonElement).style.color = '#595959';
+                        (el as HTMLButtonElement).style.fontWeight = '400';
+                      });
+                      const btn = document.getElementById(`next-serve-${t.id}`) as HTMLButtonElement;
+                      btn.style.background = '#e6f4ff';
+                      btn.style.color = '#1677ff';
+                      btn.style.fontWeight = '700';
+                    }}
+                    style={{
+                      flex: 1,
+                      border: '1px solid #d9d9d9',
+                      borderRadius: 6,
+                      padding: '8px 12px',
+                      cursor: 'pointer',
+                      fontSize: 13,
+                      background: t.id === defaultNextServing ? '#e6f4ff' : '#fff',
+                      color: t.id === defaultNextServing ? '#1677ff' : '#595959',
+                      fontWeight: t.id === defaultNextServing ? 700 : 400,
+                    }}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+              <div style={{ marginTop: 8, fontSize: 11, color: '#8c8c8c' }}>
+                По умолчанию: команда с правом первой подачи по жеребьёвке
+              </div>
+            </div>
+          ),
+          okText: 'Начать партию',
+          cancelText: 'Отмена',
+          onOk: resolve,
+          onCancel: resolve,
+        });
+      });
+
+      const nextServingTeamId = nextSetServingRef.current ?? defaultNextServing;
+
       setLiveState(prev => {
         const sets = [...prev.sets.map(s =>
           s.setNumber === setNumber ? { ...s, isFinished: true } : s
@@ -365,7 +479,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
           setNumber: nextSetNumber,
           homeScore: 0,
           guestScore: 0,
-          servingTeamId: initialState?.servingTeamId ?? match.homeTeamId,
+          servingTeamId: nextServingTeamId,
           isFinished: false,
         });
         return {
@@ -379,8 +493,8 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
 
       await loadLineups(nextSetNumber);
       message.success(`Начинается партия ${nextSetNumber}`);
-    } catch {
-      message.error('Ошибка сохранения партии');
+    } catch (err) {
+      message.error(getApiError(err, 'Ошибка сохранения партии'));
     }
   };
 
@@ -392,27 +506,32 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
     subTypeCode: number;
     isLiberoSwap: boolean;
   }) => {
+    log('recordSubstitution →', data);
     setSaving(true);
     try {
       const cs = liveState.sets[liveState.currentSetNumber - 1] ?? { homeScore: 0, guestScore: 0 };
       const evType = eventTypes.find(et => et.name.toLowerCase().includes('замена'));
-      await eventsApi.create(match.id, {
+      log('eventType for sub:', evType, '| fallback code: 10');
+      const evTypeCode = evType?.code ?? eventTypes[0]?.code ?? 10;
+      const payload = {
         setNumber: liveState.currentSetNumber,
-        eventTypeCode: evType?.code ?? 10,
+        eventTypeCode: evTypeCode,
         teamId: data.teamId,
         homeScoreAtMoment: cs.homeScore,
         guestScoreAtMoment: cs.guestScore,
-        seqInMatch: recentEvents.length + 1,
-        isTeamEvent: true,
+        globalSeqInSet: recentEvents.length + 1,
         substitution: {
           subOutPlayerId: data.subOutPlayerId,
           subInPlayerId: data.subInPlayerId,
-          subTypeCode: data.subTypeCode,
+          subTypeCode: data.subTypeCode ?? null,
           isLiberoSwap: data.isLiberoSwap,
         },
-      });
+      };
+      log('POST /events payload:', payload);
+      const created = await eventsApi.create(match.id, payload);
+      log('Substitution event created:', created);
 
-      // обновить расстановку локально с именем и номером нового игрока
+      // обновить расстановку локально
       const allTeamPlayers = data.teamId === match.homeTeamId ? allHomePlayersFull : allGuestPlayersFull;
       const incomingPlayer = allTeamPlayers.find(p => p.id === data.subInPlayerId);
       setCurrentSetLineups(prev =>
@@ -428,10 +547,36 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
         )
       );
 
+      // запомнить пару замены для контроля повторного выхода в этой партии
+      const setNum = liveState.currentSetNumber;
+      setSubPairsPerSet(prev => {
+        const next = new Map(prev);
+        const pairs: SubPair[] = [...(next.get(setNum) ?? []), { out: data.subOutPlayerId, in: data.subInPlayerId }];
+        next.set(setNum, pairs);
+        return next;
+      });
+
+      // добавить в ленту событий
+      if (created) setRecentEvents(prev => [created as unknown as MatchEvent, ...prev].slice(0, 50));
+
       message.success('Замена выполнена');
       setSubModalOpen(false);
-    } catch {
-      message.error('Ошибка замены');
+      setSubDefaultPlayerId(undefined);
+      setSubDefaultTeamId(undefined);
+    } catch (err: unknown) {
+      const axErr = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> }; status?: number } };
+      const status = axErr.response?.status;
+      const detail = axErr.response?.data?.message ?? (err instanceof Error ? err.message : '');
+      const validationErrors = axErr.response?.data?.errors
+        ? Object.values(axErr.response.data.errors).flat().join('; ')
+        : '';
+      if (status === 401 || status === 403) {
+        message.error('Нет прав для записи замены (требуется роль СекретарьМатча)');
+      } else if (status === 400 && validationErrors) {
+        message.error(`Ошибка данных замены: ${validationErrors}`);
+      } else {
+        message.error(detail ? `Ошибка замены: ${detail}` : 'Ошибка записи замены');
+      }
     } finally {
       setSaving(false);
     }
@@ -453,13 +598,12 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
         teamId,
         homeScoreAtMoment: cs.homeScore,
         guestScoreAtMoment: cs.guestScore,
-        seqInMatch: recentEvents.length + 1,
-        isTeamEvent: true,
+        globalSeqInSet: recentEvents.length + 1,
         timeout: { timeoutTypeCode: timeoutTypesRef.current[0]?.code ?? 1 },
       });
       message.success('Тайм-аут зафиксирован');
-    } catch {
-      message.error('Ошибка записи тайм-аута');
+    } catch (err) {
+      message.error(getApiError(err, 'Ошибка записи тайм-аута'));
     }
   };
 
@@ -505,6 +649,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
 
   const handleActionConfirm = (category: string, result: ActionResult) => {
     if (!selectedPlayer) return;
+    log('handleActionConfirm:', category, result.code, '| player pos:', selectedPlayer.positionNo, '| serving:', servingTeamId);
     setActionPickerOpen(false);
     const teamId = selectedPlayer.teamId;
     recordEvent(teamId, selectedPlayer, result);
@@ -528,7 +673,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
         width="100%"
         style={{ top: 0, padding: 0, maxWidth: '100vw' }}
         styles={{ body: { padding: 0, height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' } }}
-        destroyOnClose
+        destroyOnHidden
       >
         {/* шапка */}
         <div style={{
@@ -566,6 +711,19 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
           <Row gutter={12} style={{ height: '100%' }}>
             {/* левая колонка — площадка */}
             <Col xs={24} md={14} style={{ display: 'flex', flexDirection: 'column' }}>
+              {currentSetLineups.length === 0 && (
+                <div style={{
+                  background: '#fffbe6',
+                  border: '1px solid #ffe58f',
+                  borderRadius: 8,
+                  padding: '6px 12px',
+                  marginBottom: 8,
+                  fontSize: 12,
+                  color: '#ad6800',
+                }}>
+                  ⚠ Расстановка не задана — нажмите кнопки «+1» для записи очков, или сначала заполните расстановку во вкладке «Расстановка»
+                </div>
+              )}
               <LiveCourtView
                 homeTeamId={match.homeTeamId}
                 homeTeamName={match.homeTeamName ?? 'Хозяева'}
@@ -642,6 +800,25 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
           justifyContent: 'space-between',
         }}>
           <Space wrap>
+            {/* быстрое очко — не требует расстановки */}
+            <Button
+              size="small"
+              type="primary"
+              style={{ background: '#1677ff', borderColor: '#1677ff', fontWeight: 700 }}
+              onClick={() => quickScore(match.homeTeamId)}
+              disabled={saving}
+            >
+              +1 {match.homeTeamName?.split(' ')[0] ?? 'Хозяева'}
+            </Button>
+            <Button
+              size="small"
+              type="primary"
+              style={{ background: '#fa8c16', borderColor: '#fa8c16', fontWeight: 700 }}
+              onClick={() => quickScore(match.guestTeamId)}
+              disabled={saving}
+            >
+              +1 {match.guestTeamName?.split(' ')[0] ?? 'Гости'}
+            </Button>
             <Button
               size="small"
               icon={<span>⏰</span>}
@@ -661,7 +838,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
             <Button
               size="small"
               icon={<span>🔄</span>}
-              onClick={() => setSubModalOpen(true)}
+              onClick={() => { setSubDefaultPlayerId(undefined); setSubDefaultTeamId(undefined); setSubModalOpen(true); }}
               disabled={saving}
             >
               Замена
@@ -739,7 +916,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
               </div>
               {[
                 { label: 'Записать действие', action: () => { setSelectedPlayer(contextMenu.player); setActionPickerOpen(true); setContextMenu(null); } },
-                { label: 'Замена игрока', action: () => { setSubModalOpen(true); setContextMenu(null); } },
+                { label: 'Замена игрока', action: () => { setSubDefaultPlayerId(contextMenu.player.playerId); setSubDefaultTeamId(contextMenu.player.teamId); setSubModalOpen(true); setContextMenu(null); } },
                 { label: 'Санкция', action: () => { setSanctionModalOpen(true); setContextMenu(null); } },
               ].map(item => (
                 <div
@@ -810,6 +987,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
             ? (match.homeTeamName ?? 'Хозяева')
             : (match.guestTeamName ?? 'Гости')
         }
+        servingTeamId={servingTeamId}
         onConfirm={handleActionConfirm}
         onCancel={() => { setActionPickerOpen(false); setSelectedPlayer(null); }}
       />
@@ -828,8 +1006,11 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
         allHomePlayers={allHomePlayersFull}
         allGuestPlayers={allGuestPlayersFull}
         substitutionTypes={substitutionTypes}
+        defaultOutPlayerId={subDefaultPlayerId}
+        defaultTeamId={subDefaultTeamId}
+        subPairsCurrentSet={subPairsPerSet.get(liveState.currentSetNumber)}
         onConfirm={recordSubstitution}
-        onCancel={() => setSubModalOpen(false)}
+        onCancel={() => { setSubModalOpen(false); setSubDefaultPlayerId(undefined); setSubDefaultTeamId(undefined); }}
       />
 
       {/* модал санкции */}
@@ -841,7 +1022,8 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
         homeTeamName={match.homeTeamName ?? 'Хозяева'}
         guestTeamId={match.guestTeamId}
         guestTeamName={match.guestTeamName ?? 'Гости'}
-        allPlayers={allPlayersLookup}
+        homePlayers={homePlayersLookup}
+        guestPlayers={guestPlayersLookup}
         sanctionTypes={sanctionTypes}
         sanctionKinds={sanctionKinds}
         recipientTypes={recipientTypes}
@@ -850,8 +1032,8 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
             await sanctionsApi.create(match.id, data);
             message.success('Санкция применена');
             setSanctionModalOpen(false);
-          } catch {
-            message.error('Ошибка сохранения санкции');
+          } catch (err) {
+            message.error(getApiError(err, 'Ошибка сохранения санкции'));
           }
         }}
         onCancel={() => setSanctionModalOpen(false)}

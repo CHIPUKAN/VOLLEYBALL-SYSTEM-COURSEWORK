@@ -11,6 +11,8 @@ namespace VolleyballIS.Application.DTOs
     }
 
     // Универсальный DTO для справочника с целочисленным id (регионы, тренеры, площадки и т.д.)
+    // Id — всегда string: регионы используют ОКТМО (11 цифр), остальные — числа в виде строки.
+    // На фронте: Number(item.id) для числовых ID, raw string для регионов.
     public class LookupItemDto
     {
         #region Свойства

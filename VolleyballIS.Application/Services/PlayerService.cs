@@ -66,31 +66,27 @@ namespace VolleyballIS.Application.Services
 
         public async Task<PlayerDto> UpdatePlayerAsync(int id, UpdatePlayerDto dto) // обновить игрока
         {
-            bool exists = await playerRepository.ExistsAsync(id);
-            if (!exists)
+            T6Player? existing = await playerRepository.GetByIdAsync(id);
+            if (existing == null)
             {
                 throw new KeyNotFoundException($"Игрок с идентификатором {id} не найден");
             }
 
-            T6Player player = new T6Player
-            {
-                Id = id,
-                TeamId = dto.TeamId,
-                LastName = dto.LastName,
-                FirstName = dto.FirstName,
-                MiddleName = dto.MiddleName,
-                BirthDate = dto.BirthDate,
-                HeightCm = dto.HeightCm,
-                WeightKg = dto.WeightKg,
-                JerseyNumber = dto.JerseyNumber,
-                AmpluaCode = dto.AmpluaCode,
-                SportsRank = dto.SportsRank,
-                Email = dto.Email,
-                Phone = dto.Phone,
-                StatusCode = dto.StatusCode,
-                PhotoUrl = dto.PhotoUrl
-            };
-            T6Player updated = await playerRepository.UpdateAsync(player);
+            existing.TeamId = dto.TeamId;
+            existing.LastName = dto.LastName;
+            existing.FirstName = dto.FirstName;
+            existing.MiddleName = dto.MiddleName;
+            existing.BirthDate = dto.BirthDate;
+            existing.HeightCm = dto.HeightCm;
+            existing.WeightKg = dto.WeightKg;
+            existing.JerseyNumber = dto.JerseyNumber;
+            existing.AmpluaCode = dto.AmpluaCode;
+            existing.SportsRank = dto.SportsRank;
+            existing.Email = dto.Email;
+            existing.Phone = dto.Phone;
+            existing.StatusCode = dto.StatusCode;
+            existing.PhotoUrl = dto.PhotoUrl;
+            T6Player updated = await playerRepository.UpdateAsync(existing);
             PlayerDto result = MapToDto(updated);
             return result;
         }

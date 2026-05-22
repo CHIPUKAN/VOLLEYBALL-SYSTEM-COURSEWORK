@@ -49,21 +49,17 @@ namespace VolleyballIS.Application.Services
 
         public async Task<VenueDto> UpdateVenueAsync(int id, UpdateVenueDto dto) // обновить площадку
         {
-            bool exists = await venueRepository.ExistsAsync(id);
-            if (!exists)
+            T2Venue? existing = await venueRepository.GetByIdAsync(id);
+            if (existing == null)
             {
                 throw new KeyNotFoundException($"Площадка с идентификатором {id} не найдена");
             }
 
-            T2Venue venue = new T2Venue
-            {
-                Id = id,
-                Name = dto.Name,
-                Address = dto.Address,
-                City = dto.City,
-                Capacity = dto.Capacity
-            };
-            T2Venue updated = await venueRepository.UpdateAsync(venue);
+            existing.Name = dto.Name;
+            existing.Address = dto.Address;
+            existing.City = dto.City;
+            existing.Capacity = dto.Capacity;
+            T2Venue updated = await venueRepository.UpdateAsync(existing);
             VenueDto result = MapToDto(updated);
             return result;
         }

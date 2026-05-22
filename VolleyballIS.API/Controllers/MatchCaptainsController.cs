@@ -41,6 +41,7 @@ namespace VolleyballIS.API.Controllers
         }
 
         [HttpPut]
+        [Authorize(Roles = "Суперадминистратор,СекретарьМатча,ТренерКоманды")]
         public async Task<ActionResult<MatchCaptainDto>> Upsert(int matchId, [FromBody] UpsertMatchCaptainDto dto) // назначить капитана
         {
             if (!ModelState.IsValid)

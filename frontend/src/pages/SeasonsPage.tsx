@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+﻿import React, { useEffect, useState, useMemo } from 'react';
 import {
   Table, Button, Modal, Form, Input, Select, Space, Popconfirm,
   App, Typography, Row, Col, Tag, DatePicker,
@@ -8,6 +8,7 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { seasonsApi } from '../api/index';
 import type { Season } from '../types/index';
+import { useAuth } from '../context/AuthContext';
 
 const { Title } = Typography;
 const { Search } = Input;
@@ -17,24 +18,22 @@ const { RangePicker } = DatePicker;
 const SEASON_STATUSES = [
   { value: 'active', label: 'Активный' },
   { value: 'finished', label: 'Завершённый' },
-  { value: 'planned', label: 'Планируемый' },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'green',
   finished: 'default',
-  planned: 'blue',
 };
 
 const STATUS_LABELS: Record<string, string> = {
   active: 'Активный',
   finished: 'Завершённый',
-  planned: 'Планируемый',
 };
 
 // страница управления сезонами
 const SeasonsPage: React.FC = () => {
   const { message } = App.useApp();
+  const { can } = useAuth();
 
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [loading, setLoading] = useState(false);
@@ -100,7 +99,7 @@ const SeasonsPage: React.FC = () => {
       return;
     }
     const dates = values.dates as [dayjs.Dayjs, dayjs.Dayjs];
-    const statusKeyMap: Record<string, string> = { active: 'активен', planned: 'планируемый', finished: 'завершён' };
+    const statusKeyMap: Record<string, string> = { active: 'активен', finished: 'завершён' };
     const payload: Partial<Season> = {
       name: values.name as string,
       startDate: dates[0].format('YYYY-MM-DD'),
@@ -161,16 +160,20 @@ const SeasonsPage: React.FC = () => {
       fixed: 'right',
       render: (_: unknown, record: Season) => (
         <Space>
-          <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" />
-          <Popconfirm
-            title="Удалить сезон?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Удалить"
-            cancelText="Отмена"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" icon={<DeleteOutlined />} danger size="small" />
-          </Popconfirm>
+          {can('manageSeasons') && (
+            <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" />
+          )}
+          {can('manageSeasons') && (
+            <Popconfirm
+              title="Удалить сезон?"
+              onConfirm={() => handleDelete(record.id)}
+              okText="Удалить"
+              cancelText="Отмена"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="text" icon={<DeleteOutlined />} danger size="small" />
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -180,9 +183,11 @@ const SeasonsPage: React.FC = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={3} style={{ margin: 0 }}>Сезоны</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-          Добавить
-        </Button>
+        {can('manageSeasons') && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+            Добавить
+          </Button>
+        )}
       </div>
 
       <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
@@ -214,7 +219,7 @@ const SeasonsPage: React.FC = () => {
         okText={editRecord ? 'Сохранить' : 'Создать'}
         cancelText="Отмена"
         width={520}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="name" label="Название" rules={[{ required: true, message: 'Введите название сезона' }]}>

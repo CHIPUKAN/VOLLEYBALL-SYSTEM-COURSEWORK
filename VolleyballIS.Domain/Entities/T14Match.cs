@@ -55,6 +55,8 @@ namespace VolleyballIS.Domain.Entities
         public T11Group? Group { get; set; }                    // группа (если групповой этап)
         public S6MatchStatus? Status { get; set; }              // статус матча
         public S17CoinTossOption? CoinTossChoice { get; set; } // вариант выбора при жеребьёвке
+        public T4Team? CoinTossWinnerTeam { get; set; }        // команда-победитель жеребьёвки
+        public T4Team? FirstServeTeam { get; set; }             // команда первой подачи
         public ICollection<R3Set> Sets { get; set; } = new List<R3Set>(); // партии матча
         #endregion
 

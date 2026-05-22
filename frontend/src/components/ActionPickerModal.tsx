@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Modal, Button, Typography, Space } from 'antd';
+﻿import React, { useState } from 'react';
+import { Modal, Button, Typography, Space, Alert } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import type { StartingLineup, ActionResult } from '../types/index';
 
@@ -10,6 +10,7 @@ interface ActionPickerModalProps {
   player: StartingLineup | null;
   playerFullName?: string;
   teamName?: string;
+  servingTeamId?: number;
   onConfirm: (category: string, result: ActionResult) => void;
   onCancel: () => void;
 }
@@ -56,20 +57,50 @@ const EFFECT_COLORS: Record<string, string> = {
   neutral:  '#8c8c8c',
 };
 
+const FRONT_ROW = new Set([2, 3, 4]);
+
+// вычислить допустимые категории действий для конкретного игрока
+function getAvailableCategories(player: StartingLineup | null, servingTeamId: number | undefined) {
+  if (!player || servingTeamId === undefined) return ACTION_CATEGORIES;
+
+  const isServingTeam = player.teamId === servingTeamId;
+  const pos = player.positionNo;
+
+  return ACTION_CATEGORIES.filter(cat => {
+    switch (cat.code) {
+      case 'serve':
+        // подаёт только игрок № 1 подающей команды
+        return isServingTeam && pos === 1;
+      case 'reception':
+        // принимают только игроки не-подающей команды
+        return !isServingTeam;
+      case 'block':
+        // блокируют передние игроки (2,3,4) не-подающей команды
+        return !isServingTeam && FRONT_ROW.has(pos);
+      case 'attack':
+        // атакуют передние игроки обеих команд
+        return FRONT_ROW.has(pos);
+      case 'other':
+        return true;
+      default:
+        return true;
+    }
+  });
+}
+
 // двухшаговый модал выбора действия
 const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
   open,
   player,
   playerFullName,
   teamName,
+  servingTeamId,
   onConfirm,
   onCancel,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const handleCategorySelect = (code: string) => {
-    setSelectedCategory(code);
-  };
+  const handleCategorySelect = (code: string) => setSelectedCategory(code);
 
   const handleResultSelect = (result: ActionResult) => {
     if (selectedCategory) {
@@ -78,18 +109,15 @@ const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
     }
   };
 
-  const handleCancel = () => {
-    setSelectedCategory(null);
-    onCancel();
-  };
-
-  const handleBack = () => {
-    setSelectedCategory(null);
-  };
+  const handleCancel = () => { setSelectedCategory(null); onCancel(); };
+  const handleBack = () => setSelectedCategory(null);
 
   const playerLabel = player
     ? `#${player.shirtNumber ?? '?'} ${playerFullName ?? player.playerFullName ?? ''}`
     : '';
+
+  const availableCategories = getAvailableCategories(player, servingTeamId);
+  const hiddenCategories = ACTION_CATEGORIES.filter(c => !availableCategories.some(a => a.code === c.code));
 
   return (
     <Modal
@@ -106,35 +134,55 @@ const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
           <Text strong>
             {selectedCategory
               ? `${ACTION_CATEGORIES.find(c => c.code === selectedCategory)?.icon ?? ''} ${ACTION_CATEGORIES.find(c => c.code === selectedCategory)?.label ?? ''}`
-              : `Действие игрока`}
+              : 'Действие игрока'}
           </Text>
         </Space>
       }
-      destroyOnClose
+      destroyOnHidden
       afterClose={() => setSelectedCategory(null)}
       width={420}
     >
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 10 }}>
         <Text type="secondary">
           {playerLabel}{teamName ? ` · ${teamName}` : ''}
         </Text>
       </div>
 
+      {/* подсказка о недоступных действиях */}
+      {!selectedCategory && hiddenCategories.length > 0 && player && servingTeamId !== undefined && (
+        <div style={{ marginBottom: 10, fontSize: 11, color: '#8c8c8c', lineHeight: 1.4 }}>
+          {player.teamId === servingTeamId
+            ? player.positionNo !== 1
+              ? '🏐 Подача — только игрок позиции 1 подающей команды'
+              : null
+            : '🏐 Подача и блок недоступны для принимающей команды на данных позициях'}
+        </div>
+      )}
+
       {/* шаг 1: категории */}
       {!selectedCategory && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-          {ACTION_CATEGORIES.map(cat => (
-            <Button
-              key={cat.code}
-              onClick={() => handleCategorySelect(cat.code)}
-              style={{ height: 72, fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}
-              block
-            >
-              <span style={{ fontSize: 22 }}>{cat.icon}</span>
-              <span>{cat.label}</span>
-            </Button>
-          ))}
-        </div>
+        availableCategories.length === 0 ? (
+          <Alert
+            message="Нет доступных действий"
+            description="Для этого игрока нет допустимых действий по правилам волейбола."
+            type="info"
+            showIcon
+          />
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+            {availableCategories.map(cat => (
+              <Button
+                key={cat.code}
+                onClick={() => handleCategorySelect(cat.code)}
+                style={{ height: 72, fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                block
+              >
+                <span style={{ fontSize: 22 }}>{cat.icon}</span>
+                <span>{cat.label}</span>
+              </Button>
+            ))}
+          </div>
+        )
       )}
 
       {/* шаг 2: результаты */}

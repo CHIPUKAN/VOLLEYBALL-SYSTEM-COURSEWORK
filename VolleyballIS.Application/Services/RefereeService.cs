@@ -52,24 +52,20 @@ namespace VolleyballIS.Application.Services
 
         public async Task<RefereeDto> UpdateRefereeAsync(int id, UpdateRefereeDto dto) // обновить судью
         {
-            bool exists = await refereeRepository.ExistsAsync(id);
-            if (!exists)
+            T12Referee? existing = await refereeRepository.GetByIdAsync(id);
+            if (existing == null)
             {
                 throw new KeyNotFoundException($"Судья с идентификатором {id} не найден");
             }
 
-            T12Referee referee = new T12Referee
-            {
-                Id = id,
-                LastName = dto.LastName,
-                FirstName = dto.FirstName,
-                MiddleName = dto.MiddleName,
-                Category = dto.Category,
-                LicenseNumber = dto.LicenseNumber,
-                Email = dto.Email,
-                Phone = dto.Phone
-            };
-            T12Referee updated = await refereeRepository.UpdateAsync(referee);
+            existing.LastName = dto.LastName;
+            existing.FirstName = dto.FirstName;
+            existing.MiddleName = dto.MiddleName;
+            existing.Category = dto.Category;
+            existing.LicenseNumber = dto.LicenseNumber;
+            existing.Email = dto.Email;
+            existing.Phone = dto.Phone;
+            T12Referee updated = await refereeRepository.UpdateAsync(existing);
             RefereeDto result = MapToDto(updated);
             return result;
         }

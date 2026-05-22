@@ -6,7 +6,7 @@ export const authApi = {
     client.post<AuthResponse>('/auth/login', dto).then(r => r.data),
 
   register: (dto: Omit<RegisterDto, 'role'> & { role?: string }) =>
-    client.post<AuthResponse>('/auth/register', { role: 'Зритель', ...dto }).then(r => r.data),
+    client.post<AuthResponse>('/auth/register', { ...dto, role: 'Зритель' }).then(r => r.data),
 
   getMe: () =>
     client.get<UserDto>('/auth/me').then(r => r.data),

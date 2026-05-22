@@ -10,7 +10,6 @@ namespace VolleyballIS.Infrastructure.Data
     {
         public static async Task SeedAsync(VolleyballDbContext dbContext) // заполнить все справочники если они пустые
         {
-            await EnsureUserTableAsync(dbContext);
             await SeedDefaultAdminAsync(dbContext);
             await SeedAmplua(dbContext);
             await SeedPlayerStatuses(dbContext);
@@ -30,25 +29,6 @@ namespace VolleyballIS.Infrastructure.Data
             await SeedRecipientTypes(dbContext);
             await SeedCoinTossOptions(dbContext);
             await SeedScoringSystems(dbContext);
-        }
-
-        private static async Task EnsureUserTableAsync(VolleyballDbContext db) // создать таблицу app_users если не существует
-        {
-            await db.Database.ExecuteSqlRawAsync("""
-                CREATE TABLE IF NOT EXISTS app_users (
-                    id          SERIAL PRIMARY KEY,
-                    email       TEXT NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    role        TEXT NOT NULL,
-                    full_name   TEXT,
-                    linked_coach_id     INT,
-                    linked_player_id    INT,
-                    linked_referee_id   INT,
-                    linked_organizer_id INT,
-                    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    CONSTRAINT uq_app_users_email UNIQUE (email)
-                )
-                """);
         }
 
         private static async Task SeedDefaultAdminAsync(VolleyballDbContext db) // создать дефолтного суперадминистратора

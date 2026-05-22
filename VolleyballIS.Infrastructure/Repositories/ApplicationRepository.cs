@@ -26,7 +26,7 @@ namespace VolleyballIS.Infrastructure.Repositories
                 .Include(a => a.Team)
                 .Include(a => a.Tournament)
                 .Include(a => a.Status)
-                .Include(a => a.Composition).ThenInclude(c => c.Player)
+                .Include(a => a.Composition).ThenInclude(c => c.Player).ThenInclude(p => p!.Amplua)
                 .OrderByDescending(a => a.SubmissionDate)
                 .ToListAsync();
             return result;
@@ -37,7 +37,7 @@ namespace VolleyballIS.Infrastructure.Repositories
             IEnumerable<T7Application> result = await dbContext.Applications
                 .Include(a => a.Team)
                 .Include(a => a.Status)
-                .Include(a => a.Composition).ThenInclude(c => c.Player)
+                .Include(a => a.Composition).ThenInclude(c => c.Player).ThenInclude(p => p!.Amplua)
                 .Where(a => a.TournamentId == tournamentId)
                 .OrderBy(a => a.Team!.Name)
                 .ToListAsync();
@@ -49,7 +49,7 @@ namespace VolleyballIS.Infrastructure.Repositories
             IEnumerable<T7Application> result = await dbContext.Applications
                 .Include(a => a.Tournament)
                 .Include(a => a.Status)
-                .Include(a => a.Composition).ThenInclude(c => c.Player)
+                .Include(a => a.Composition).ThenInclude(c => c.Player).ThenInclude(p => p!.Amplua)
                 .Where(a => a.TeamId == teamId)
                 .OrderByDescending(a => a.SubmissionDate)
                 .ToListAsync();
@@ -62,7 +62,7 @@ namespace VolleyballIS.Infrastructure.Repositories
                 .Include(a => a.Team)
                 .Include(a => a.Tournament)
                 .Include(a => a.Status)
-                .Include(a => a.Composition).ThenInclude(c => c.Player)
+                .Include(a => a.Composition).ThenInclude(c => c.Player).ThenInclude(p => p!.Amplua)
                 .FirstOrDefaultAsync(a => a.Id == id);
             return result;
         }

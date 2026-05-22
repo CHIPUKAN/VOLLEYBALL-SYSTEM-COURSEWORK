@@ -16,8 +16,8 @@ interface LiveCourtViewProps {
   disabled?: boolean;
 }
 
-const FRONT_POSITIONS_HOME = [4, 3, 2];
-const BACK_POSITIONS_HOME = [5, 6, 1];
+const FRONT_POSITIONS_HOME = [2, 3, 4];
+const BACK_POSITIONS_HOME = [1, 6, 5];
 
 // кликабельная площадка для live-режима
 const LiveCourtView: React.FC<LiveCourtViewProps> = ({
@@ -175,14 +175,14 @@ const LiveCourtView: React.FC<LiveCourtViewProps> = ({
         <div style={{ flex: 1, height: 4, background: '#fff', borderRadius: 2, opacity: 0.9 }} />
       </div>
 
-      {/* гости */}
+      {/* гости — передняя линия ближе к сетке, задняя — дальше */}
       <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 10 }}>
         <div style={halfStyle}>
           <div style={rowStyle}>
-            {[1, 6, 5].map(pos => renderSlot(guestTeamId, pos))}
+            {[2, 3, 4].map(pos => renderSlot(guestTeamId, pos))}
           </div>
           <div style={rowStyle}>
-            {[2, 3, 4].map(pos => renderSlot(guestTeamId, pos))}
+            {[1, 6, 5].map(pos => renderSlot(guestTeamId, pos))}
           </div>
         </div>
       </div>

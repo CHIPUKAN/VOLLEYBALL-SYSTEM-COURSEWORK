@@ -32,9 +32,9 @@ const POSITION_NAMES: Record<number, string> = {
   6: 'Центр задний',
 };
 
-// макет поля: передняя линия [4,3,2], задняя [5,6,1]
-const FRONT_POSITIONS = [4, 3, 2];
-const BACK_POSITIONS = [5, 6, 1];
+// макет поля: передняя линия [2,3,4], задняя [1,6,5] — позиция 1 слева у обеих команд
+const FRONT_POSITIONS = [2, 3, 4];
+const BACK_POSITIONS = [1, 6, 5];
 
 // компонент волейбольного поля
 const VolleyCourt: React.FC<VolleyCourtProps> = ({
@@ -80,7 +80,10 @@ const VolleyCourt: React.FC<VolleyCourtProps> = ({
       const allPlayers = teamId === homeTeamId ? homePlayers : guestPlayers;
       const player = allPlayers.find(p => p.id === playerId);
       setLineups(prev => {
-        const rest = prev.filter(l => !(l.teamId === teamId && l.positionNo === positionNo));
+        // удаляем и старую позицию этого игрока (drag-and-drop между позициями), и текущую позицию
+        const rest = prev.filter(l =>
+          l.teamId !== teamId || (l.positionNo !== positionNo && l.playerId !== playerId)
+        );
         return [...rest, {
           matchId, teamId, setNumber, positionNo, playerId,
           playerFullName: player?.fullName ?? `#${playerId}`,
@@ -226,14 +229,14 @@ const VolleyCourt: React.FC<VolleyCourtProps> = ({
           <div style={{ flex: 1, height: 4, background: '#fff', borderRadius: 2, opacity: 0.9 }} />
         </div>
 
-        {/* гости — нижняя половина поля (зеркально) */}
+        {/* гости — нижняя половина поля: передняя линия ближе к сетке, задняя — дальше */}
         <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 10 }}>
           <div style={halfStyle}>
             <div style={rowStyle}>
-              {[1, 6, 5].map(pos => renderSlot(guestTeamId, pos))}
+              {[2, 3, 4].map(pos => renderSlot(guestTeamId, pos))}
             </div>
             <div style={rowStyle}>
-              {[2, 3, 4].map(pos => renderSlot(guestTeamId, pos))}
+              {[1, 6, 5].map(pos => renderSlot(guestTeamId, pos))}
             </div>
           </div>
         </div>

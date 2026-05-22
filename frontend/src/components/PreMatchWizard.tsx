@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Modal, Steps, Card, Button, Radio, Space, Typography, Row, Col } from 'antd';
 import type { Match, CoinTossResult } from '../types/index';
 import VolleyCourt from './VolleyCourt';
@@ -149,7 +149,7 @@ const PreMatchWizard: React.FC<PreMatchWizardProps> = ({
       onCancel={onCancel}
       footer={null}
       width={620}
-      destroyOnClose
+      destroyOnHidden
       afterClose={() => setCurrentStep(0)}
     >
       <Steps

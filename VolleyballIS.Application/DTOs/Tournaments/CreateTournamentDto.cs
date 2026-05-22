@@ -43,9 +43,11 @@ namespace VolleyballIS.Application.DTOs.Tournaments
         public short MaxPlayersPerApp { get; set; } = 12; // максимум игроков: 12 или 14
 
         [Required(ErrorMessage = "Формат турнира обязателен")]
+        [Range(1, short.MaxValue, ErrorMessage = "Код формата должен быть положительным")]
         public short FormatCode { get; set; } // код формата
 
         [Required(ErrorMessage = "Система начисления очков обязательна")]
+        [Range(1, short.MaxValue, ErrorMessage = "Код системы очков должен быть положительным")]
         public short ScoringSystemCode { get; set; } // код системы очков
         #endregion
     }

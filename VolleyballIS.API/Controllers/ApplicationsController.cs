@@ -55,7 +55,7 @@ namespace VolleyballIS.API.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Суперадминистратор,Тренер")]
+        [Authorize(Roles = "Суперадминистратор,ТренерКоманды")]
         public async Task<ActionResult<ApplicationDto>> Create([FromBody] CreateApplicationDto dto) // создать заявку
         {
             if (!ModelState.IsValid)
@@ -74,7 +74,7 @@ namespace VolleyballIS.API.Controllers
         }
 
         [HttpPut("{id:int}")]
-        [Authorize(Roles = "Суперадминистратор,Тренер,Организатор")]
+        [Authorize(Roles = "Суперадминистратор,ТренерКоманды,Организатор,ПредставительКоманды")]
         public async Task<ActionResult<ApplicationDto>> Update(int id, [FromBody] UpdateApplicationDto dto) // обновить статус заявки
         {
             if (!ModelState.IsValid)
@@ -108,7 +108,7 @@ namespace VolleyballIS.API.Controllers
         }
 
         [HttpPost("{id:int}/players")]
-        [Authorize(Roles = "Суперадминистратор,Тренер")]
+        [Authorize(Roles = "Суперадминистратор,ТренерКоманды")]
         public async Task<ActionResult<ApplicationDto>> AddPlayer(int id, [FromBody] AddCompositionPlayerDto dto) // добавить игрока в заявку
         {
             if (!ModelState.IsValid)
@@ -131,7 +131,7 @@ namespace VolleyballIS.API.Controllers
         }
 
         [HttpDelete("{id:int}/players/{playerId:int}")]
-        [Authorize(Roles = "Суперадминистратор,Тренер,Организатор")]
+        [Authorize(Roles = "Суперадминистратор,ТренерКоманды,Организатор,ПредставительКоманды")]
         public async Task<IActionResult> RemovePlayer(int id, int playerId) // убрать игрока из заявки
         {
             try

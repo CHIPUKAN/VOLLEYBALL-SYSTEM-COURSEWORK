@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React, { useState } from 'react';
 import { Modal, Form, Select, InputNumber, Row, Col, Button, Typography } from 'antd';
 import type { Sanction, LookupDto, LookupItemDto } from '../types/index';
 
@@ -12,7 +12,8 @@ interface SanctionQuickModalProps {
   homeTeamName: string;
   guestTeamId: number;
   guestTeamName: string;
-  allPlayers: LookupItemDto[];
+  homePlayers: LookupItemDto[];
+  guestPlayers: LookupItemDto[];
   sanctionTypes: LookupDto[];
   sanctionKinds: LookupDto[];
   recipientTypes: LookupDto[];
@@ -20,7 +21,7 @@ interface SanctionQuickModalProps {
   onCancel: () => void;
 }
 
-// быстрая форма санкции (компактный лейаут)
+// быстрая форма санкции с фильтрацией игроков по выбранной команде
 const SanctionQuickModal: React.FC<SanctionQuickModalProps> = ({
   open,
   matchId,
@@ -29,7 +30,8 @@ const SanctionQuickModal: React.FC<SanctionQuickModalProps> = ({
   homeTeamName,
   guestTeamId,
   guestTeamName,
-  allPlayers,
+  homePlayers,
+  guestPlayers,
   sanctionTypes,
   sanctionKinds,
   recipientTypes,
@@ -37,17 +39,31 @@ const SanctionQuickModal: React.FC<SanctionQuickModalProps> = ({
   onCancel,
 }) => {
   const [form] = Form.useForm();
+  const [selectedTeamId, setSelectedTeamId] = useState<number | undefined>();
+
+  const teamPlayers = selectedTeamId === homeTeamId
+    ? homePlayers
+    : selectedTeamId === guestTeamId
+    ? guestPlayers
+    : [];
 
   const handleOk = async () => {
     let values: Record<string, unknown>;
     try { values = await form.validateFields(); } catch { return; }
     onConfirm({ matchId, setNumber, ...values });
     form.resetFields();
+    setSelectedTeamId(undefined);
   };
 
   const handleCancel = () => {
     form.resetFields();
+    setSelectedTeamId(undefined);
     onCancel();
+  };
+
+  const handleTeamChange = (teamId: number) => {
+    setSelectedTeamId(teamId);
+    form.setFieldValue('playerId', undefined);
   };
 
   return (
@@ -56,8 +72,8 @@ const SanctionQuickModal: React.FC<SanctionQuickModalProps> = ({
       title="Санкция"
       onCancel={handleCancel}
       footer={null}
-      destroyOnClose
-      afterClose={() => form.resetFields()}
+      destroyOnHidden
+      afterClose={() => { form.resetFields(); setSelectedTeamId(undefined); }}
       width={500}
     >
       <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
@@ -66,12 +82,13 @@ const SanctionQuickModal: React.FC<SanctionQuickModalProps> = ({
       <Form form={form} layout="vertical">
         <Row gutter={12}>
           <Col xs={24} sm={12}>
-            <Form.Item name="teamId" label="Команда" rules={[{ required: true }]}>
+            <Form.Item name="teamId" label="Команда" rules={[{ required: true, message: 'Выберите команду' }]}>
               <Select
                 options={[
                   { value: homeTeamId, label: homeTeamName },
                   { value: guestTeamId, label: guestTeamName },
                 ]}
+                onChange={handleTeamChange}
               />
             </Form.Item>
           </Col>
@@ -79,8 +96,9 @@ const SanctionQuickModal: React.FC<SanctionQuickModalProps> = ({
             <Form.Item name="playerId" label="Игрок">
               <Select
                 allowClear
-                placeholder="Не указан"
-                options={allPlayers.map(p => ({ value: Number(p.id), label: p.name }))}
+                disabled={!selectedTeamId}
+                placeholder={selectedTeamId ? 'Не указан' : 'Сначала выберите команду'}
+                options={teamPlayers.map(p => ({ value: Number(p.id), label: p.name }))}
                 showSearch
                 filterOption={(input, opt) => (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
               />
@@ -89,17 +107,17 @@ const SanctionQuickModal: React.FC<SanctionQuickModalProps> = ({
         </Row>
         <Row gutter={12}>
           <Col xs={24} sm={8}>
-            <Form.Item name="recipientTypeCode" label="Получатель" rules={[{ required: true }]}>
+            <Form.Item name="recipientTypeCode" label="Получатель" rules={[{ required: true, message: 'Выберите получателя' }]}>
               <Select options={recipientTypes.map(t => ({ value: t.code, label: t.name }))} />
             </Form.Item>
           </Col>
           <Col xs={24} sm={8}>
-            <Form.Item name="sanctionTypeCode" label="Тип санкции" rules={[{ required: true }]}>
+            <Form.Item name="sanctionTypeCode" label="Тип санкции" rules={[{ required: true, message: 'Выберите тип' }]}>
               <Select options={sanctionTypes.map(t => ({ value: t.code, label: t.name }))} />
             </Form.Item>
           </Col>
           <Col xs={24} sm={8}>
-            <Form.Item name="sanctionKindCode" label="Вид" rules={[{ required: true }]}>
+            <Form.Item name="sanctionKindCode" label="Вид" rules={[{ required: true, message: 'Выберите вид' }]}>
               <Select options={sanctionKinds.map(k => ({ value: k.code, label: k.name }))} />
             </Form.Item>
           </Col>

@@ -16,6 +16,7 @@ const COLUMNS = [
   { statusCode: 1, statusName: 'На рассмотрении', color: '#378ADD', bgColor: '#E6F1FB' },
   { statusCode: 2, statusName: 'Принята',         color: '#3B6D11', bgColor: '#EAF3DE' },
   { statusCode: 3, statusName: 'Отклонена',       color: '#A32D2D', bgColor: '#FCEBEB' },
+  { statusCode: 4, statusName: 'Отозвана',        color: '#888888', bgColor: '#F2F2F2' },
 ];
 
 // kanban заявок на турниры

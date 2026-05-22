@@ -39,7 +39,14 @@ builder.Services.AddDbContext<VolleyballDbContext>(options =>
 string jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("JWT Secret не задан в конфигурации");
 
+if (Encoding.UTF8.GetByteCount(jwtSecret) < 32)
+{
+    throw new InvalidOperationException("JWT Secret должен содержать не менее 32 байт");
+}
+
 byte[] keyBytes = Encoding.UTF8.GetBytes(jwtSecret);
+string jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "VolleyballIS";
+string jwtAudience = builder.Configuration["Jwt:Audience"] ?? "VolleyballIS.Client";
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -48,8 +55,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
-            ValidateIssuer = false,
-            ValidateAudience = false,
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
             ClockSkew = TimeSpan.Zero
         };
     });
@@ -177,6 +186,17 @@ using (IServiceScope scope = app.Services.CreateScope())
 
     try
     {
+        // добавить колонку comment если отсутствует (идемпотентный ALTER TABLE)
+        await dbContext.Database.ExecuteSqlRawAsync(
+            "ALTER TABLE t7_applications ADD COLUMN IF NOT EXISTS comment TEXT");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Schema] Предупреждение: не удалось добавить колонку comment — {ex.Message}");
+    }
+
+    try
+    {
         await DataSeeder.SeedAsync(dbContext);
     }
     catch (Exception ex)
@@ -197,7 +217,10 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection(); // в dev-режиме редирект не нужен — HTTPS обычно не настроен
+}
 app.UseCors("ReactFrontend");
 app.UseAuthentication();
 app.UseAuthorization();

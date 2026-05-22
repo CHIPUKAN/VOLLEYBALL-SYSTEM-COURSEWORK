@@ -12,7 +12,11 @@ namespace VolleyballIS.Application.DTOs.Applications
 
         public short? ShirtNumber { get; set; } // номер в заявке
 
-        public string? AmpluaName { get; set; } // роль / амплуа в заявке
+        public string Role { get; set; } = "основной"; // тип записи: основной / запасной
+
+        public short? AmpluaCode { get; set; } // код амплуа из карточки игрока
+
+        public string? AmpluaName { get; set; } // наименование амплуа из карточки игрока
 
         public bool IsLibero { get; set; } // признак либеро
         #endregion

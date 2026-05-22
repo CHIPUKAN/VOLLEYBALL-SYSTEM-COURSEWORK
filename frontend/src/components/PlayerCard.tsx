@@ -16,7 +16,8 @@ const AVATAR_COLORS = [
   '#AFA9EC', '#FAC775', '#9FE1CB', '#D3D1C7',
 ];
 
-function teamColor(teamId: number): string {
+function teamColor(teamId: number | undefined): string {
+  if (teamId == null) return '#e8e8e8';
   return AVATAR_COLORS[teamId % AVATAR_COLORS.length];
 }
 

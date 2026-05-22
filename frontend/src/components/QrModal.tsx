@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { Modal, Button, Typography, Space } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import QRCode from 'qrcode';
@@ -29,7 +29,7 @@ const QrModal: React.FC<QrModalProps> = ({
 
   useEffect(() => {
     if (!open) return;
-    const url = `${window.location.origin}/matches/${matchId}`;
+    const url = `${window.location.origin}/public/matches/${matchId}`;
     QRCode.toDataURL(url, { width: 220, margin: 2 })
       .then(setDataUrl)
       .catch(() => setDataUrl(''));
@@ -50,7 +50,7 @@ const QrModal: React.FC<QrModalProps> = ({
       onCancel={onClose}
       footer={null}
       width={320}
-      destroyOnClose
+      destroyOnHidden
     >
       <Space direction="vertical" align="center" style={{ width: '100%', padding: '12px 0' }}>
         {dataUrl ? (

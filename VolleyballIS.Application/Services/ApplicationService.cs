@@ -76,6 +76,7 @@ namespace VolleyballIS.Application.Services
             }
 
             existing.StatusCode = dto.StatusCode;
+            existing.Comment = dto.Comment;
             T7Application updated = await applicationRepository.UpdateAsync(existing);
             ApplicationDto result = MapToDto(updated);
             return result;
@@ -109,7 +110,7 @@ namespace VolleyballIS.Application.Services
             {
                 ApplicationId = applicationId,
                 PlayerId = dto.PlayerId,
-                JerseyNumberInApp = dto.ShirtNumber ?? 0,
+                JerseyNumberInApp = dto.ShirtNumber,
                 Role = "основной",
                 IsLibero = dto.IsLibero
             };
@@ -140,17 +141,16 @@ namespace VolleyballIS.Application.Services
                 SubmittedAt = app.SubmissionDate,
                 StatusCode = app.StatusCode,
                 StatusName = app.Status?.Name,
+                Comment = app.Comment,
                 Players = app.Composition.Select(c => new ApplicationCompositionDto
                 {
                     ApplicationId = c.ApplicationId,
                     PlayerId = c.PlayerId,
-                    PlayerName = c.Player != null
-                        ? (c.Player.MiddleName != null
-                            ? $"{c.Player.LastName} {c.Player.FirstName} {c.Player.MiddleName}"
-                            : $"{c.Player.LastName} {c.Player.FirstName}")
-                        : null,
+                    PlayerName = c.Player?.FullName(),
                     ShirtNumber = c.JerseyNumberInApp,
-                    AmpluaName = c.Role,
+                    Role = c.Role,
+                    AmpluaCode = c.Player?.AmpluaCode,
+                    AmpluaName = c.Player?.Amplua?.Name,
                     IsLibero = c.IsLibero
                 }).ToList()
             };

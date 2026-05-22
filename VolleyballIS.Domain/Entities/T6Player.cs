@@ -21,27 +21,13 @@ namespace VolleyballIS.Domain.Entities
         public string LastName // фамилия игрока
         {
             get => lastName;
-            set
-            {
-                if (string.IsNullOrWhiteSpace(value))
-                {
-                    throw new ArgumentException("Фамилия игрока не может быть пустой");
-                }
-                lastName = value;
-            }
+            set => lastName = value ?? string.Empty;
         }
 
         public string FirstName // имя игрока
         {
             get => firstName;
-            set
-            {
-                if (string.IsNullOrWhiteSpace(value))
-                {
-                    throw new ArgumentException("Имя игрока не может быть пустым");
-                }
-                firstName = value;
-            }
+            set => firstName = value ?? string.Empty;
         }
 
         public string? MiddleName { get; set; } // отчество игрока (необязательно)

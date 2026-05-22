@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+﻿import React, { useEffect, useState, useMemo } from 'react';
 import {
   Table, Button, Modal, Form, Input, Select, Space, Popconfirm,
   App, Typography, Row, Col, DatePicker, InputNumber, Radio, Layout, Card,
@@ -11,6 +11,8 @@ import { tournamentsApi } from '../api/index';
 import { lookupsApi } from '../api/lookupsApi';
 import type { Tournament, LookupDto, LookupItemDto } from '../types/index';
 import TournamentTree from '../components/TournamentTree';
+import { useAuth } from '../context/AuthContext';
+import { getApiError } from '../utils/apiError';
 
 const { Title } = Typography;
 const { Search } = Input;
@@ -21,6 +23,7 @@ const { TextArea } = Input;
 // страница управления турнирами
 const TournamentsPage: React.FC = () => {
   const { message } = App.useApp();
+  const { can } = useAuth();
   const navigate = useNavigate();
 
   const [viewMode, setViewMode] = useState<'table' | 'tree'>('table');
@@ -100,6 +103,8 @@ const TournamentsPage: React.FC = () => {
       gender: record.gender,
       level: record.level,
       maxPlayersPerApp: record.maxPlayersPerApp,
+      ageCategory: record.ageCategory,
+      applicationDeadline: record.applicationDeadline ? dayjs(record.applicationDeadline) : undefined,
     });
     setModalOpen(true);
   };
@@ -109,8 +114,8 @@ const TournamentsPage: React.FC = () => {
       await tournamentsApi.delete(id);
       message.success('Турнир удалён');
       loadData();
-    } catch {
-      message.error('Ошибка удаления');
+    } catch (err) {
+      message.error(getApiError(err, 'Ошибка удаления турнира'));
     }
   };
 
@@ -136,6 +141,10 @@ const TournamentsPage: React.FC = () => {
       gender: values.gender as string,
       level: values.level as string,
       maxPlayersPerApp: (values.maxPlayersPerApp as number) ?? 12,
+      ageCategory: values.ageCategory as string | undefined,
+      applicationDeadline: values.applicationDeadline
+        ? (values.applicationDeadline as dayjs.Dayjs).format('YYYY-MM-DD')
+        : undefined,
     };
     setSaving(true);
     try {
@@ -148,8 +157,8 @@ const TournamentsPage: React.FC = () => {
       }
       setModalOpen(false);
       loadData();
-    } catch {
-      message.error('Ошибка сохранения');
+    } catch (err) {
+      message.error(getApiError(err, 'Ошибка сохранения турнира'));
     } finally {
       setSaving(false);
     }
@@ -200,16 +209,20 @@ const TournamentsPage: React.FC = () => {
       fixed: 'right',
       render: (_: unknown, record: Tournament) => (
         <Space>
-          <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" />
-          <Popconfirm
-            title="Удалить турнир?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Удалить"
-            cancelText="Отмена"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" icon={<DeleteOutlined />} danger size="small" />
-          </Popconfirm>
+          {can('manageTournaments') && (
+            <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" />
+          )}
+          {can('manageTournaments') && (
+            <Popconfirm
+              title="Удалить турнир?"
+              onConfirm={() => handleDelete(record.id)}
+              okText="Удалить"
+              cancelText="Отмена"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="text" icon={<DeleteOutlined />} danger size="small" />
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -224,9 +237,11 @@ const TournamentsPage: React.FC = () => {
             <Radio.Button value="table"><UnorderedListOutlined /> Таблица</Radio.Button>
             <Radio.Button value="tree"><ApartmentOutlined /> Дерево</Radio.Button>
           </Radio.Group>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-            Добавить
-          </Button>
+          {can('manageTournaments') && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+              Добавить
+            </Button>
+          )}
         </Space>
       </div>
 
@@ -310,7 +325,7 @@ const TournamentsPage: React.FC = () => {
         okText={editRecord ? 'Сохранить' : 'Создать'}
         cancelText="Отмена"
         width={760}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Row gutter={16}>
@@ -395,7 +410,7 @@ const TournamentsPage: React.FC = () => {
               <Form.Item name="level" label="Уровень турнира" rules={[{ required: true, message: 'Выберите уровень' }]} initialValue="региональный">
                 <Select
                   options={[
-                    { value: 'международный', label: 'Международный' },
+                    { value: 'ФИВБ', label: 'ФИВБ (международный)' },
                     { value: 'национальный', label: 'Национальный' },
                     { value: 'региональный', label: 'Региональный' },
                     { value: 'местный', label: 'Местный' },
@@ -417,6 +432,18 @@ const TournamentsPage: React.FC = () => {
           <Form.Item name="description" label="Описание">
             <TextArea rows={3} />
           </Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="ageCategory" label="Возрастная категория">
+                <Input placeholder="U18 / U21 / open" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="applicationDeadline" label="Дедлайн заявок">
+                <DatePicker style={{ width: '100%' }} format="DD.MM.YYYY" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
     </div>

@@ -40,7 +40,7 @@ const SubstitutionGraph: React.FC<SubstitutionGraphProps> = ({
     return <Text type="secondary">Замен не было</Text>;
   }
 
-  const maxSeq = Math.max(...events.map(e => e.seqInMatch), 1);
+  const maxSeq = Math.max(...events.map(e => e.globalSeqInSet), 1);
 
   const buildSpans = (teamId: number): PlayerSpan[] => {
     const spans: PlayerSpan[] = [];
@@ -51,14 +51,14 @@ const SubstitutionGraph: React.FC<SubstitutionGraphProps> = ({
       // линия выходящего игрока — заканчивается здесь
       const existing = spans.find(s => s.playerId === sub.subOutPlayerId && !s.endSeq);
       if (existing) {
-        existing.endSeq = ev.seqInMatch;
+        existing.endSeq = ev.globalSeqInSet;
         existing.isSubOut = true;
       } else {
         spans.push({
           playerId: sub.subOutPlayerId,
           playerName: sub.subOutPlayerName ?? `#${sub.subOutPlayerId}`,
           startSeq: 1,
-          endSeq: ev.seqInMatch,
+          endSeq: ev.globalSeqInSet,
           isSubOut: true,
           isSubIn: false,
         });
@@ -67,7 +67,7 @@ const SubstitutionGraph: React.FC<SubstitutionGraphProps> = ({
       spans.push({
         playerId: sub.subInPlayerId,
         playerName: sub.subInPlayerName ?? `#${sub.subInPlayerId}`,
-        startSeq: ev.seqInMatch,
+        startSeq: ev.globalSeqInSet,
         endSeq: undefined,
         isSubOut: false,
         isSubIn: true,

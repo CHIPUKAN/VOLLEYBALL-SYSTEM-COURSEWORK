@@ -16,8 +16,8 @@ const LiveTicker: React.FC = () => {
 
   const fetchLive = async () => {
     try {
-      const all = await matchesApi.getAll();
-      const live = all.filter(m => m.statusName === 'В процессе');
+      // statusCode 2 = В процессе — серверный фильтр снижает нагрузку
+      const live = await matchesApi.getAll({ statusCode: 2 });
       if (live.length === 0) {
         setTickerItems([]);
         return;
@@ -67,9 +67,6 @@ const LiveTicker: React.FC = () => {
         height: 32,
         background: '#1a1a2e',
         overflow: 'hidden',
-        position: 'sticky',
-        top: 0,
-        zIndex: 1000,
         display: 'flex',
         alignItems: 'center',
       }}>

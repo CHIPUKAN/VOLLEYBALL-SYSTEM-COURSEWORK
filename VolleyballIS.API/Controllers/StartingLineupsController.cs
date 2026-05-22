@@ -41,6 +41,7 @@ namespace VolleyballIS.API.Controllers
         }
 
         [HttpPut]
+        [Authorize(Roles = "Суперадминистратор,СекретарьМатча,ТренерКоманды")]
         public async Task<ActionResult<StartingLineupDto>> Upsert(int matchId, [FromBody] UpsertStartingLineupDto dto) // занести позицию расстановки
         {
             if (!ModelState.IsValid)
@@ -52,6 +53,7 @@ namespace VolleyballIS.API.Controllers
         }
 
         [HttpDelete]
+        [Authorize(Roles = "Суперадминистратор,СекретарьМатча,ТренерКоманды")]
         public async Task<IActionResult> DeleteTeamSet(
             int matchId,
             [FromQuery] int teamId,
