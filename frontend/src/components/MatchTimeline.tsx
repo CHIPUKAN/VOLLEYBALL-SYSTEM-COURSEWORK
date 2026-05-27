@@ -15,13 +15,43 @@ interface MatchTimelineProps {
 }
 
 const EVENT_STYLES: Record<string, { icon: string; color: string; label: string }> = {
-  'Эйс':              { icon: '⚡', color: '#185FA5', label: 'Эйс' },
-  'Блок-очко':        { icon: '🛡', color: '#3B6D11', label: 'Блок' },
-  'Очко атаки':       { icon: '💥', color: '#534AB7', label: 'Атака' },
-  'Ошибка подачи':    { icon: '✗',  color: '#A32D2D', label: 'Ошибка' },
-  'Ошибка атаки':     { icon: '✗',  color: '#A32D2D', label: 'Ошибка' },
-  'Замена':           { icon: '↔',  color: '#BA7517', label: 'Замена' },
-  'Тайм-аут':         { icon: 'T',  color: '#5F5E5A', label: 'Тайм-аут' },
+  // подача
+  'Эйс':                 { icon: '⚡', color: '#185FA5', label: 'Эйс' },
+  'Ошибка подачи':       { icon: '✗',  color: '#A32D2D', label: 'Ошибка подачи' },
+  'Подача':              { icon: '🏐', color: '#888888', label: 'Подача' },
+  // приём
+  'Приём отличный':      { icon: '✓✓', color: '#3B6D11', label: 'Приём отличный' },
+  'Приём хороший':       { icon: '✓',  color: '#5A9E20', label: 'Приём хороший' },
+  'Приём слабый':        { icon: '~',  color: '#A07D10', label: 'Приём слабый' },
+  'Ошибка приёма':       { icon: '✗',  color: '#A32D2D', label: 'Ошибка приёма' },
+  // передача
+  'Передача':            { icon: '🙌', color: '#7B4FAA', label: 'Передача' },
+  'Ошибка передачи':     { icon: '✗',  color: '#A32D2D', label: 'Ошибка передачи' },
+  // атака
+  'Очко атаки':          { icon: '💥', color: '#534AB7', label: 'Атака' },
+  'Атака заблокирована': { icon: '🛡',  color: '#3B6D11', label: 'Заблок.' },
+  'Ошибка атаки':        { icon: '✗',  color: '#A32D2D', label: 'Ошибка атаки' },
+  // блок
+  'Блок-очко':           { icon: '🛡',  color: '#3B6D11', label: 'Блок' },
+  'Блок-касание':        { icon: '🤚', color: '#5A9E20', label: 'Блок-кас.' },
+  'Ошибка блока':        { icon: '✗',  color: '#A32D2D', label: 'Ошибка блока' },
+  // замены и тайм-ауты
+  'Замена игрока':       { icon: '↔',  color: '#BA7517', label: 'Замена' },
+  'Замена либеро':       { icon: '↕',  color: '#BA7517', label: 'Замена либеро' },
+  'Командный тайм-аут':  { icon: 'T',  color: '#5F5E5A', label: 'Тайм-аут' },
+  'Технический тайм-аут':{ icon: 'Т',  color: '#5F5E5A', label: 'Техн. тайм-аут' },
+  // нарушения и технические очки
+  'Техническое очко':    { icon: '⊕',  color: '#888888', label: 'Техн. очко' },
+  'Касание сетки':       { icon: '🔴', color: '#A32D2D', label: 'Касание сетки' },
+  'Заступ':              { icon: '🔴', color: '#A32D2D', label: 'Заступ' },
+  'Ошибка расстановки':  { icon: '🔴', color: '#A32D2D', label: 'Ошиб. расст.' },
+  'Двойное касание':     { icon: '🔴', color: '#A32D2D', label: 'Двойн. кас.' },
+  'Четыре касания':      { icon: '🔴', color: '#A32D2D', label: 'Четыре кас.' },
+  'Захват мяча':         { icon: '🔴', color: '#A32D2D', label: 'Захват мяча' },
+  'Спорный мяч':         { icon: '⚖',  color: '#888888', label: 'Спорный мяч' },
+  // устаревшие ключи для обратной совместимости
+  'Замена':              { icon: '↔',  color: '#BA7517', label: 'Замена' },
+  'Тайм-аут':            { icon: 'T',  color: '#5F5E5A', label: 'Тайм-аут' },
 };
 const DEFAULT_STYLE = { icon: '●', color: '#aaa', label: 'Событие' };
 
@@ -29,7 +59,6 @@ const DEFAULT_STYLE = { icon: '●', color: '#aaa', label: 'Событие' };
 const MatchTimeline: React.FC<MatchTimelineProps> = ({
   events,
   sets,
-  homeTeamId,
   guestTeamId,
   homeTeamName,
   guestTeamName,
@@ -49,6 +78,7 @@ const MatchTimeline: React.FC<MatchTimelineProps> = ({
         const setEvents = events.filter(e => e.setNumber === setNum);
         const setData = sets.find(s => s.setNumber === setNum);
         const total = setEvents.length || 1;
+        const targetSum = ((setData?.homeScore ?? 0) as number) + ((setData?.guestScore ?? 0) as number) || total;
 
         return (
           <div key={setNum} style={{ marginBottom: 24 }}>
@@ -69,7 +99,8 @@ const MatchTimeline: React.FC<MatchTimelineProps> = ({
               <div style={{ position: 'relative', height: 28, background: 'rgba(22,119,255,0.08)', borderRadius: 4, display: 'inline-block', width: 'calc(100% - 84px)' }}>
                 {setEvents.map(ev => {
                   const style = EVENT_STYLES[ev.eventTypeName ?? ''] ?? DEFAULT_STYLE;
-                  const pct = ((ev.globalSeqInSet - setEvents[0].globalSeqInSet) / total) * 100;
+                  const eventSum = ev.homeScoreAtMoment + ev.guestScoreAtMoment;
+                  const pct = (eventSum / targetSum) * 100;
                   const isHome = ev.teamId !== guestTeamId;
                   if (!isHome) return null;
                   return (
@@ -103,7 +134,8 @@ const MatchTimeline: React.FC<MatchTimelineProps> = ({
               <div style={{ position: 'relative', height: 28, background: 'rgba(250,100,0,0.08)', borderRadius: 4, display: 'inline-block', width: 'calc(100% - 84px)' }}>
                 {setEvents.map(ev => {
                   const style = EVENT_STYLES[ev.eventTypeName ?? ''] ?? DEFAULT_STYLE;
-                  const pct = ((ev.globalSeqInSet - setEvents[0].globalSeqInSet) / total) * 100;
+                  const eventSum = ev.homeScoreAtMoment + ev.guestScoreAtMoment;
+                  const pct = (eventSum / targetSum) * 100;
                   const isGuest = ev.teamId === guestTeamId;
                   if (!isGuest) return null;
                   return (

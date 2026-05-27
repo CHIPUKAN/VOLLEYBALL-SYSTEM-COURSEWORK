@@ -49,6 +49,13 @@ namespace VolleyballIS.API.Controllers
             {
                 return BadRequest(ModelState);
             }
+            if (!Roles.All.Contains(dto.Role))
+            {
+                return BadRequest(new
+                {
+                    message = $"Недопустимая роль «{dto.Role}». Разрешены: {string.Join(", ", Roles.All)}"
+                });
+            }
 
             try
             {
@@ -62,11 +69,18 @@ namespace VolleyballIS.API.Controllers
         }
 
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<UserDto>> Update(int id, [FromBody] RegisterDto dto) // обновить пользователя
+        public async Task<ActionResult<UserDto>> Update(int id, [FromBody] UpdateUserDto dto) // обновить пользователя
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
+            }
+            if (!Roles.All.Contains(dto.Role))
+            {
+                return BadRequest(new
+                {
+                    message = $"Недопустимая роль «{dto.Role}». Разрешены: {string.Join(", ", Roles.All)}"
+                });
             }
 
             try

@@ -9,12 +9,14 @@ namespace VolleyballIS.Application.Services
     {
         #region Поля
         private readonly IMatchCaptainRepository captainRepository; // репозиторий капитанов
+        private readonly IPlayerRepository playerRepository;        // репозиторий игроков
         #endregion
 
         #region Конструкторы
-        public MatchCaptainService(IMatchCaptainRepository captainRepository) // конструктор с внедрением зависимости
+        public MatchCaptainService(IMatchCaptainRepository captainRepository, IPlayerRepository playerRepository) // конструктор с внедрением зависимости
         {
             this.captainRepository = captainRepository;
+            this.playerRepository = playerRepository;
         }
         #endregion
 
@@ -35,6 +37,13 @@ namespace VolleyballIS.Application.Services
 
         public async Task<MatchCaptainDto> UpsertCaptainAsync(int matchId, UpsertMatchCaptainDto dto) // назначить капитана
         {
+            T6Player? player = await playerRepository.GetByIdAsync(dto.PlayerId);
+            if (player == null)
+                throw new KeyNotFoundException($"Игрок с идентификатором {dto.PlayerId} не найден");
+            if (player.TeamId != dto.TeamId)
+                throw new InvalidOperationException(
+                    $"Игрок {player.LastName} {player.FirstName} не принадлежит команде id={dto.TeamId}");
+
             T21MatchCaptain captain = new T21MatchCaptain
             {
                 MatchId = matchId,

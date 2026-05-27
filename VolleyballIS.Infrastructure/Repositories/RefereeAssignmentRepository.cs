@@ -83,6 +83,18 @@ namespace VolleyballIS.Infrastructure.Repositories
             bool result = await query.AnyAsync();
             return result;
         }
+
+        public async Task<bool> RoleExistsForMatchAsync(int matchId, short roleCode, int? excludeId = null) // уникальность роли в матче
+        {
+            IQueryable<T15RefereeAssignment> query = dbContext.RefereeAssignments
+                .Where(a => a.MatchId == matchId && a.RoleCode == roleCode);
+            if (excludeId.HasValue)
+            {
+                query = query.Where(a => a.Id != excludeId.Value);
+            }
+            bool result = await query.AnyAsync();
+            return result;
+        }
         #endregion
     }
 }

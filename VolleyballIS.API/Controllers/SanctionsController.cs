@@ -49,8 +49,15 @@ namespace VolleyballIS.API.Controllers
                 return BadRequest(ModelState);
             }
             dto.MatchId = matchId;
-            SanctionDto result = await sanctionService.CreateSanctionAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { matchId, id = result.Id }, result);
+            try
+            {
+                SanctionDto result = await sanctionService.CreateSanctionAsync(dto);
+                return CreatedAtAction(nameof(GetById), new { matchId, id = result.Id }, result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpPut("{id:int}")]
@@ -70,6 +77,10 @@ namespace VolleyballIS.API.Controllers
             {
                 SanctionDto result = await sanctionService.UpdateSanctionAsync(id, dto);
                 return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {

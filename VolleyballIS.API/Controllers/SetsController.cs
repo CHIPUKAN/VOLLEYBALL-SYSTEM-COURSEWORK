@@ -48,8 +48,15 @@ namespace VolleyballIS.API.Controllers
             {
                 return BadRequest(ModelState);
             }
-            SetDto result = await setService.UpsertSetAsync(matchId, dto);
-            return Ok(result);
+            try
+            {
+                SetDto result = await setService.UpsertSetAsync(matchId, dto);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpDelete("{setNumber:int}")]

@@ -5,22 +5,26 @@ import type { StartingLineup, ActionResult } from '../types/index';
 
 const { Text, Title } = Typography;
 
+type RallyPhase = 'pre_serve' | 'in_play';
+
 interface ActionPickerModalProps {
   open: boolean;
   player: StartingLineup | null;
   playerFullName?: string;
   teamName?: string;
   servingTeamId?: number;
+  rallyPhase?: RallyPhase;
   onConfirm: (category: string, result: ActionResult) => void;
   onCancel: () => void;
 }
 
 const ACTION_CATEGORIES = [
-  { code: 'serve',     label: 'Подача',  icon: '🏐' },
-  { code: 'reception', label: 'Приём',   icon: '🤲' },
-  { code: 'attack',    label: 'Атака',   icon: '💥' },
-  { code: 'block',     label: 'Блок',    icon: '🛡️' },
-  { code: 'other',     label: 'Другое',  icon: '⚙️' },
+  { code: 'serve',     label: 'Подача',   icon: '🏐' },
+  { code: 'reception', label: 'Приём',    icon: '🤲' },
+  { code: 'set',       label: 'Передача', icon: '🙌' },
+  { code: 'attack',    label: 'Атака',    icon: '💥' },
+  { code: 'block',     label: 'Блок',     icon: '🛡️' },
+  { code: 'other',     label: 'Другое',   icon: '⚙️' },
 ];
 
 const ACTION_RESULTS: Record<string, ActionResult[]> = {
@@ -35,6 +39,10 @@ const ACTION_RESULTS: Record<string, ActionResult[]> = {
     { code: 'rec_poor',    label: 'Слабый',   icon: '~',  scoringEffect: 'neutral',  eventTypeName: 'Приём слабый' },
     { code: 'rec_error',   label: 'Ошибка',   icon: '✗',  scoringEffect: 'opposing', eventTypeName: 'Ошибка приёма' },
   ],
+  set: [
+    { code: 'set_good',  label: 'Передача',        icon: '✓', scoringEffect: 'neutral',  eventTypeName: 'Передача' },
+    { code: 'set_error', label: 'Ошибка передачи', icon: '✗', scoringEffect: 'opposing', eventTypeName: 'Ошибка передачи' },
+  ],
   attack: [
     { code: 'atk_point',   label: 'Очко',          icon: '💥', scoringEffect: 'acting',   eventTypeName: 'Очко атаки' },
     { code: 'atk_blocked', label: 'Заблокирована', icon: '🛡',  scoringEffect: 'neutral',  eventTypeName: 'Атака заблокирована' },
@@ -46,8 +54,18 @@ const ACTION_RESULTS: Record<string, ActionResult[]> = {
     { code: 'blk_error', label: 'Ошибка',     icon: '✗',  scoringEffect: 'opposing', eventTypeName: 'Ошибка блока' },
   ],
   other: [
-    { code: 'point_opponent', label: 'Очко соперника (техн.)', icon: '⊕', scoringEffect: 'opposing', eventTypeName: 'Техническое очко' },
-    { code: 'point_us',       label: 'Очко нашей команды',    icon: '⊕', scoringEffect: 'acting',   eventTypeName: 'Техническое очко' },
+    { code: 'point_opponent',    label: 'Очко соперника (техн.)',    icon: '⊕', scoringEffect: 'opposing', eventTypeName: 'Техническое очко' },
+    { code: 'point_us',          label: 'Очко нашей команды (техн.)',icon: '⊕', scoringEffect: 'acting',   eventTypeName: 'Техническое очко' },
+    { code: 'net_touch_opp',     label: 'Касание сетки соперником', icon: '🔴', scoringEffect: 'acting',   eventTypeName: 'Касание сетки' },
+    { code: 'foot_fault_opp',    label: 'Заступ соперника',         icon: '🔴', scoringEffect: 'acting',   eventTypeName: 'Заступ' },
+    { code: 'rotation_fault_opp',label: 'Ошибка расстановки сопер.',icon: '🔴', scoringEffect: 'acting',   eventTypeName: 'Ошибка расстановки' },
+    { code: 'double_hit_opp',    label: 'Двойное касание соперника',icon: '🔴', scoringEffect: 'acting',   eventTypeName: 'Двойное касание' },
+    { code: 'four_hits_opp',     label: 'Четыре касания соперника', icon: '🔴', scoringEffect: 'acting',   eventTypeName: 'Четыре касания' },
+    { code: 'caught_ball_opp',   label: 'Захват мяча соперником',   icon: '🔴', scoringEffect: 'acting',   eventTypeName: 'Захват мяча' },
+    { code: 'disputed_us',       label: 'Спорный мяч (нам)',        icon: '⚖', scoringEffect: 'acting',   eventTypeName: 'Спорный мяч' },
+    { code: 'disputed_them',     label: 'Спорный мяч (им)',         icon: '⚖', scoringEffect: 'opposing', eventTypeName: 'Спорный мяч' },
+    { code: 'net_touch_self',    label: 'Касание сетки нашим игр.', icon: '🔵', scoringEffect: 'opposing', eventTypeName: 'Касание сетки' },
+    { code: 'foot_fault_self',   label: 'Заступ нашего игрока',     icon: '🔵', scoringEffect: 'opposing', eventTypeName: 'Заступ' },
   ],
 };
 
@@ -60,11 +78,24 @@ const EFFECT_COLORS: Record<string, string> = {
 const FRONT_ROW = new Set([2, 3, 4]);
 
 // вычислить допустимые категории действий для конкретного игрока
-function getAvailableCategories(player: StartingLineup | null, servingTeamId: number | undefined) {
+function getAvailableCategories(
+  player: StartingLineup | null,
+  servingTeamId: number | undefined,
+  rallyPhase: RallyPhase = 'in_play',
+) {
   if (!player || servingTeamId === undefined) return ACTION_CATEGORIES;
 
   const isServingTeam = player.teamId === servingTeamId;
   const pos = player.positionNo;
+
+  // до подачи доступны только подача (поз.1 подающей) и другое
+  if (rallyPhase === 'pre_serve') {
+    return ACTION_CATEGORIES.filter(cat => {
+      if (cat.code === 'serve') return isServingTeam && pos === 1;
+      if (cat.code === 'other') return true;
+      return false;
+    });
+  }
 
   return ACTION_CATEGORIES.filter(cat => {
     switch (cat.code) {
@@ -73,6 +104,9 @@ function getAvailableCategories(player: StartingLineup | null, servingTeamId: nu
         return isServingTeam && pos === 1;
       case 'reception':
         // принимают только игроки не-подающей команды
+        return !isServingTeam;
+      case 'set':
+        // передача только у принимающей команды
         return !isServingTeam;
       case 'block':
         // блокируют передние игроки (2,3,4) не-подающей команды
@@ -95,6 +129,7 @@ const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
   playerFullName,
   teamName,
   servingTeamId,
+  rallyPhase,
   onConfirm,
   onCancel,
 }) => {
@@ -116,7 +151,7 @@ const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
     ? `#${player.shirtNumber ?? '?'} ${playerFullName ?? player.playerFullName ?? ''}`
     : '';
 
-  const availableCategories = getAvailableCategories(player, servingTeamId);
+  const availableCategories = getAvailableCategories(player, servingTeamId, rallyPhase);
   const hiddenCategories = ACTION_CATEGORIES.filter(c => !availableCategories.some(a => a.code === c.code));
 
   return (

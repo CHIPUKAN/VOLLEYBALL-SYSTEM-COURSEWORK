@@ -9,12 +9,17 @@ namespace VolleyballIS.Application.Services
     {
         #region Поля
         private readonly IEventRepository eventRepository; // репозиторий событий
+        private readonly IMatchRepository matchRepository; // репозиторий матчей (для проверки статуса)
+
+        // коды терминальных статусов матча (запись запрещена)
+        private static readonly short[] TerminalStatusCodes = [3, 5, 6];
         #endregion
 
         #region Конструкторы
-        public EventService(IEventRepository eventRepository) // конструктор с внедрением зависимости
+        public EventService(IEventRepository eventRepository, IMatchRepository matchRepository) // конструктор с внедрением зависимости
         {
             this.eventRepository = eventRepository;
+            this.matchRepository = matchRepository;
         }
         #endregion
 
@@ -42,6 +47,12 @@ namespace VolleyballIS.Application.Services
 
         public async Task<EventDto> CreateEventAsync(CreateEventDto dto) // создать событие
         {
+            T14Match? match = await matchRepository.GetByIdAsync(dto.MatchId);
+            if (match == null)
+                throw new KeyNotFoundException($"Матч с идентификатором {dto.MatchId} не найден");
+            if (TerminalStatusCodes.Contains(match.StatusCode))
+                throw new InvalidOperationException("Нельзя добавлять события в завершённый, отменённый или технически проигранный матч");
+
             T17Event ev = new T17Event
             {
                 MatchId = dto.MatchId,
@@ -82,11 +93,14 @@ namespace VolleyballIS.Application.Services
 
         public async Task DeleteEventAsync(int id) // удалить событие
         {
-            bool exists = await eventRepository.ExistsAsync(id);
-            if (!exists)
-            {
+            T17Event? ev = await eventRepository.GetByIdAsync(id);
+            if (ev == null)
                 throw new KeyNotFoundException($"Событие с идентификатором {id} не найдено");
-            }
+
+            T14Match? match = await matchRepository.GetByIdAsync(ev.MatchId);
+            if (match != null && TerminalStatusCodes.Contains(match.StatusCode))
+                throw new InvalidOperationException("Нельзя удалять события в завершённом, отменённом или технически проигранном матче");
+
             await eventRepository.DeleteAsync(id);
         }
 

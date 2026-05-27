@@ -40,13 +40,17 @@ const SubstitutionGraph: React.FC<SubstitutionGraphProps> = ({
     return <Text type="secondary">Замен не было</Text>;
   }
 
-  const maxSeq = Math.max(...events.map(e => e.globalSeqInSet), 1);
+  const setNumbers = useMemo(
+    () => Array.from(new Set(subEvents.map(e => e.setNumber))).sort((a, b) => a - b),
+    [subEvents]
+  );
 
-  const buildSpans = (teamId: number): PlayerSpan[] => {
+  // построить спаны замен для одной команды в одной партии
+  const buildSpansForSet = (teamId: number, setNum: number): PlayerSpan[] => {
     const spans: PlayerSpan[] = [];
-    const teamSubEvents = subEvents.filter(e => e.teamId === teamId);
+    const teamSetSubEvents = subEvents.filter(e => e.teamId === teamId && e.setNumber === setNum);
 
-    teamSubEvents.forEach(ev => {
+    teamSetSubEvents.forEach(ev => {
       const sub = ev.substitution!;
       // линия выходящего игрока — заканчивается здесь
       const existing = spans.find(s => s.playerId === sub.subOutPlayerId && !s.endSeq);
@@ -78,71 +82,81 @@ const SubstitutionGraph: React.FC<SubstitutionGraphProps> = ({
   };
 
   const renderTeam = (teamId: number, teamName: string) => {
-    const spans = buildSpans(teamId);
-    if (spans.length === 0) return null;
+    const setBlocks = setNumbers.map(setNum => {
+      const spans = buildSpansForSet(teamId, setNum);
+      if (spans.length === 0) return null;
 
-    const W = 500;
-    const lineH = 24;
-    const H = spans.length * lineH + 20;
+      // maxSeqInSet вычисляем по всем событиям этой партии (не только заменам)
+      const setAllEvents = events.filter(e => e.setNumber === setNum);
+      const maxSeqInSet = Math.max(...setAllEvents.map(e => e.globalSeqInSet), 1);
+      const setData = sets.find(s => s.setNumber === setNum);
+
+      const W = 500;
+      const lineH = 24;
+      const H = spans.length * lineH + 20;
+
+      return (
+        <div key={setNum} style={{ marginBottom: 12 }}>
+          <Text type="secondary" style={{ fontSize: 11, marginLeft: 4 }}>
+            Партия {setNum}
+            {setData ? ` (${setData.homeScore ?? '?'}:${setData.guestScore ?? '?'})` : ''}
+          </Text>
+          <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', maxWidth: W }}>
+            {spans.map((span, idx) => {
+              const y = idx * lineH + lineH / 2;
+              const x1 = (span.startSeq / maxSeqInSet) * W;
+              const x2 = span.endSeq ? (span.endSeq / maxSeqInSet) * W : W;
+
+              return (
+                <g key={`${span.playerId}-${idx}`}>
+                  {/* линия жизни */}
+                  <line
+                    x1={x1} y1={y} x2={x2} y2={y}
+                    stroke="#1677ff"
+                    strokeWidth={2}
+                    strokeDasharray={span.isSubIn ? '4 2' : 'none'}
+                  />
+
+                  {/* имя */}
+                  <text x={x1 + 2} y={y - 4} fontSize={9} fill="#555">
+                    {span.playerName}
+                  </text>
+
+                  {/* точка выхода */}
+                  {span.endSeq && (
+                    <Tooltip title={`Вышел: ${span.playerName}`}>
+                      <circle
+                        cx={x2} cy={y} r={5}
+                        fill="#ff4d4f"
+                        style={{ cursor: 'default' }}
+                      />
+                    </Tooltip>
+                  )}
+
+                  {/* точка входа */}
+                  {span.isSubIn && (
+                    <Tooltip title={`Вошёл: ${span.playerName}`}>
+                      <circle
+                        cx={x1} cy={y} r={5}
+                        fill="#52c41a"
+                        style={{ cursor: 'default' }}
+                      />
+                    </Tooltip>
+                  )}
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      );
+    });
+
+    if (setBlocks.every(b => b === null)) return null;
 
     return (
       <div style={{ marginBottom: 24 }}>
         <Text strong style={{ fontSize: 13 }}>{teamName}</Text>
-        <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', maxWidth: W }}>
-          {/* фоновые линии партий */}
-          {sets.map(s => {
-            const x = ((s.setNumber - 1) / sets.length) * W;
-            return (
-              <line key={s.setNumber} x1={x} y1={0} x2={x} y2={H}
-                stroke="#f0f0f0" strokeWidth={1} />
-            );
-          })}
-
-          {spans.map((span, idx) => {
-            const y = idx * lineH + lineH / 2;
-            const x1 = (span.startSeq / maxSeq) * W;
-            const x2 = span.endSeq ? (span.endSeq / maxSeq) * W : W;
-
-            return (
-              <g key={`${span.playerId}-${idx}`}>
-                {/* линия жизни */}
-                <line
-                  x1={x1} y1={y} x2={x2} y2={y}
-                  stroke="#1677ff"
-                  strokeWidth={2}
-                  strokeDasharray={span.isSubIn ? '4 2' : 'none'}
-                />
-
-                {/* имя */}
-                <text x={x1 + 2} y={y - 4} fontSize={9} fill="#555">
-                  {span.playerName}
-                </text>
-
-                {/* точка выхода */}
-                {span.endSeq && (
-                  <Tooltip title={`Вышел: ${span.playerName}`}>
-                    <circle
-                      cx={x2} cy={y} r={5}
-                      fill="#ff4d4f"
-                      style={{ cursor: 'default' }}
-                    />
-                  </Tooltip>
-                )}
-
-                {/* точка входа */}
-                {span.isSubIn && (
-                  <Tooltip title={`Вошёл: ${span.playerName}`}>
-                    <circle
-                      cx={x1} cy={y} r={5}
-                      fill="#52c41a"
-                      style={{ cursor: 'default' }}
-                    />
-                  </Tooltip>
-                )}
-              </g>
-            );
-          })}
-        </svg>
+        {setBlocks}
       </div>
     );
   };

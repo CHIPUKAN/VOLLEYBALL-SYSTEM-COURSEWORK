@@ -9,12 +9,14 @@ namespace VolleyballIS.Application.Services
     {
         #region Поля
         private readonly IApplicationRepository applicationRepository; // репозиторий заявок
+        private readonly IPlayerRepository playerRepository;           // репозиторий игроков
         #endregion
 
         #region Конструкторы
-        public ApplicationService(IApplicationRepository applicationRepository) // конструктор с внедрением зависимости
+        public ApplicationService(IApplicationRepository applicationRepository, IPlayerRepository playerRepository) // конструктор с внедрением зависимости
         {
             this.applicationRepository = applicationRepository;
+            this.playerRepository = playerRepository;
         }
         #endregion
 
@@ -99,6 +101,13 @@ namespace VolleyballIS.Application.Services
             {
                 throw new KeyNotFoundException($"Заявка с идентификатором {applicationId} не найдена");
             }
+
+            T6Player? player = await playerRepository.GetByIdAsync(dto.PlayerId);
+            if (player == null)
+                throw new KeyNotFoundException($"Игрок с идентификатором {dto.PlayerId} не найден");
+            if (player.TeamId != app.TeamId)
+                throw new InvalidOperationException(
+                    $"Игрок {player.LastName} {player.FirstName} не принадлежит команде данной заявки");
 
             T8ApplicationComposition? existing = await applicationRepository.GetCompositionPlayerAsync(applicationId, dto.PlayerId);
             if (existing != null)

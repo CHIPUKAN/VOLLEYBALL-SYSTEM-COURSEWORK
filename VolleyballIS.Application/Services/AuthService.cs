@@ -65,7 +65,7 @@ namespace VolleyballIS.Application.Services
             return users.Select(MapToDto);
         }
 
-        public async Task<UserDto> UpdateAsync(int id, RegisterDto dto) // обновить данные пользователя
+        public async Task<UserDto> UpdateAsync(int id, UpdateUserDto dto) // обновить данные пользователя
         {
             AppUser? existing = await userRepository.GetByIdAsync(id);
             if (existing == null)

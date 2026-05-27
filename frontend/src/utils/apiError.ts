@@ -4,7 +4,7 @@ export function getApiError(err: unknown, fallback: string): string {
   return (
     axErr?.response?.data?.message ??
     axErr?.response?.data?.title ??
-    (err instanceof Error ? err.message : '') ||
+    (err instanceof Error ? err.message : undefined) ??
     fallback
   );
 }

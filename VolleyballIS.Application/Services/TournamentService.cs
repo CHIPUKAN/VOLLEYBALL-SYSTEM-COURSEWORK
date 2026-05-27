@@ -41,6 +41,7 @@ namespace VolleyballIS.Application.Services
                 throw new InvalidOperationException($"Турнир с наименованием «{dto.Name}» уже существует");
             }
 
+            ValidateTournamentDates(dto.StartDate, dto.EndDate, dto.ApplicationDeadline);
             ValidateMaxPlayersPerApp(dto.MaxPlayersPerApp);
 
             T10Tournament tournament = new T10Tournament
@@ -59,7 +60,9 @@ namespace VolleyballIS.Application.Services
                 Level = dto.Level,
                 MaxPlayersPerApp = dto.MaxPlayersPerApp,
                 FormatCode = dto.FormatCode,
-                ScoringSystemCode = dto.ScoringSystemCode
+                ScoringSystemCode = dto.ScoringSystemCode,
+                SetsToWin = dto.SetsToWin,
+                TiebreakScoreTarget = dto.TiebreakScoreTarget
             };
             T10Tournament created = await tournamentRepository.CreateAsync(tournament);
             TournamentDto result = MapToDto(created);
@@ -80,6 +83,7 @@ namespace VolleyballIS.Application.Services
                 throw new InvalidOperationException($"Турнир с наименованием «{dto.Name}» уже существует");
             }
 
+            ValidateTournamentDates(dto.StartDate, dto.EndDate, dto.ApplicationDeadline);
             ValidateMaxPlayersPerApp(dto.MaxPlayersPerApp);
 
             existing.SeasonId = dto.SeasonId;
@@ -97,6 +101,8 @@ namespace VolleyballIS.Application.Services
             existing.MaxPlayersPerApp = dto.MaxPlayersPerApp;
             existing.FormatCode = dto.FormatCode;
             existing.ScoringSystemCode = dto.ScoringSystemCode;
+            existing.SetsToWin = dto.SetsToWin;
+            existing.TiebreakScoreTarget = dto.TiebreakScoreTarget;
             T10Tournament updated = await tournamentRepository.UpdateAsync(existing);
             TournamentDto result = MapToDto(updated);
             return result;
@@ -110,6 +116,20 @@ namespace VolleyballIS.Application.Services
                 throw new KeyNotFoundException($"Турнир с идентификатором {id} не найден");
             }
             await tournamentRepository.DeleteAsync(id);
+        }
+
+        private static void ValidateTournamentDates(DateOnly startDate, DateOnly endDate, DateOnly? appDeadline) // проверить корректность дат турнира
+        {
+            if (startDate > endDate)
+            {
+                throw new InvalidOperationException(
+                    $"Дата начала турнира ({startDate}) не может быть позже даты окончания ({endDate})");
+            }
+            if (appDeadline.HasValue && appDeadline.Value > startDate)
+            {
+                throw new InvalidOperationException(
+                    $"Дедлайн подачи заявок ({appDeadline}) должен быть не позже начала турнира ({startDate})");
+            }
         }
 
         private static void ValidateMaxPlayersPerApp(short value) // проверить допустимость значения max_players_per_app
@@ -144,7 +164,9 @@ namespace VolleyballIS.Application.Services
                 FormatCode = tournament.FormatCode,
                 FormatName = tournament.Format?.Name,
                 ScoringSystemCode = tournament.ScoringSystemCode,
-                ScoringSystemName = tournament.ScoringSystem?.Name
+                ScoringSystemName = tournament.ScoringSystem?.Name,
+                SetsToWin = tournament.SetsToWin,
+                TiebreakScoreTarget = tournament.TiebreakScoreTarget
             };
             return result;
         }

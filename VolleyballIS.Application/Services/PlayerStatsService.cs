@@ -9,12 +9,16 @@ namespace VolleyballIS.Application.Services
     {
         #region Поля
         private readonly IPlayerStatsRepository statsRepository; // репозиторий статистики
+        private readonly IMatchRepository matchRepository;        // репозиторий матчей (для проверки статуса)
+
+        private static readonly short[] TerminalStatusCodes = [3, 5, 6]; // Завершён, Отменён, Техническое поражение
         #endregion
 
         #region Конструкторы
-        public PlayerStatsService(IPlayerStatsRepository statsRepository) // конструктор с внедрением зависимости
+        public PlayerStatsService(IPlayerStatsRepository statsRepository, IMatchRepository matchRepository) // конструктор с внедрением зависимости
         {
             this.statsRepository = statsRepository;
+            this.matchRepository = matchRepository;
         }
         #endregion
 
@@ -35,6 +39,12 @@ namespace VolleyballIS.Application.Services
 
         public async Task<PlayerStatsDto> UpsertStatsAsync(int matchId, UpsertPlayerStatsDto dto) // создать или обновить
         {
+            T14Match? match = await matchRepository.GetByIdAsync(matchId);
+            if (match == null)
+                throw new KeyNotFoundException($"Матч с идентификатором {matchId} не найден");
+            if (TerminalStatusCodes.Contains(match.StatusCode))
+                throw new InvalidOperationException("Нельзя изменять статистику в завершённом, отменённом или технически проигранном матче");
+
             R2PlayerStats stats = new R2PlayerStats
             {
                 MatchId = matchId,
@@ -61,9 +71,12 @@ namespace VolleyballIS.Application.Services
         {
             bool exists = await statsRepository.ExistsAsync(matchId, playerId);
             if (!exists)
-            {
                 throw new KeyNotFoundException($"Статистика игрока {playerId} в матче {matchId} не найдена");
-            }
+
+            T14Match? match = await matchRepository.GetByIdAsync(matchId);
+            if (match != null && TerminalStatusCodes.Contains(match.StatusCode))
+                throw new InvalidOperationException("Нельзя удалять статистику в завершённом, отменённом или технически проигранном матче");
+
             await statsRepository.DeleteAsync(matchId, playerId);
         }
 

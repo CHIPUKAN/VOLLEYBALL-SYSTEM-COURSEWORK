@@ -72,7 +72,7 @@ const SeasonsPage: React.FC = () => {
 
   const handleEdit = (record: Season) => {
     setEditRecord(record);
-    const statusKey = record.status === 'активен' ? 'active' : record.status === 'планируемый' ? 'planned' : 'finished';
+    const statusKey = record.status === 'активен' ? 'active' : 'finished';
     form.setFieldsValue({
       name: record.name,
       dates: [dayjs(record.startDate), dayjs(record.endDate)],
@@ -149,7 +149,7 @@ const SeasonsPage: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => {
-        const key = status === 'активен' ? 'active' : status === 'планируемый' ? 'planned' : 'finished';
+        const key = status === 'активен' ? 'active' : 'finished';
         return <Tag color={STATUS_COLORS[key]}>{STATUS_LABELS[key]}</Tag>;
       },
     },

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using VolleyballIS.Application.Common;
 
 namespace VolleyballIS.Application.DTOs.Delegations
 {
@@ -14,6 +15,7 @@ namespace VolleyballIS.Application.DTOs.Delegations
 
         [Required(ErrorMessage = "Роль обязательна")]
         [MaxLength(30, ErrorMessage = "Роль не должна превышать 30 символов")]
+        [DelegationRoleValidation]
         public string RoleType { get; set; } = string.Empty; // роль в делегации
 
         public short? AssistantSeqNo { get; set; } // порядковый номер помощника тренера

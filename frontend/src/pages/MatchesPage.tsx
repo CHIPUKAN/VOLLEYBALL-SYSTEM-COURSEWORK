@@ -158,15 +158,13 @@ const MatchesPage: React.FC = () => {
       return;
     }
     const matchDate = (values.matchDate as dayjs.Dayjs).format('YYYY-MM-DD');
-    const startTime = values.startTime
-      ? (values.startTime as dayjs.Dayjs).format('HH:mm:ss')
-      : undefined;
+    const startTime = (values.startTime as dayjs.Dayjs).format('HH:mm:ss');
     const payload: Partial<Match> = {
       tournamentId: values.tournamentId as number,
       homeTeamId: values.homeTeamId as number,
       guestTeamId: values.guestTeamId as number,
       matchDate,
-      startTime: startTime ?? '',
+      startTime,
       venueId: values.venueId as number,
       stageCode: values.stageCode as number,
       groupId: values.groupId as number | undefined,

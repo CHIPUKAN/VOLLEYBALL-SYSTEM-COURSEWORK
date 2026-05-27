@@ -237,7 +237,7 @@ const TeamsPage: React.FC = () => {
     } else if (dropKey.startsWith('player-')) {
       const targetPlayerId = Number(dropKey.replace('player-', ''));
       const targetPlayer = players.find(p => p.id === targetPlayerId);
-      if (targetPlayer) targetTeamId = targetPlayer.teamId;
+      if (targetPlayer) targetTeamId = targetPlayer.teamId ?? null;
     }
 
     if (!targetTeamId) return;

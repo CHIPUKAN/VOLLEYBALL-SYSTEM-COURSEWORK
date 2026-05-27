@@ -12,5 +12,6 @@ namespace VolleyballIS.Application.Repositories
         Task DeleteAsync(int id);                                                // удалить
         Task<bool> ExistsAsync(int id);                                         // проверить существование
         Task<bool> AssignmentExistsAsync(int matchId, int refereeId, int? excludeId = null); // дубликат назначения
+        Task<bool> RoleExistsForMatchAsync(int matchId, short roleCode, int? excludeId = null); // уникальность роли в матче
     }
 }

@@ -43,6 +43,10 @@ namespace VolleyballIS.Application.DTOs.Tournaments
         public short ScoringSystemCode { get; set; } // код системы очков
 
         public string? ScoringSystemName { get; set; } // наименование системы очков
+
+        public short SetsToWin { get; set; } // до скольки побед по партиям играется матч
+
+        public short TiebreakScoreTarget { get; set; } // порог счёта в решающей партии
         #endregion
     }
 }

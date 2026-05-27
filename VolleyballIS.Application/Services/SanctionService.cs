@@ -9,12 +9,16 @@ namespace VolleyballIS.Application.Services
     {
         #region Поля
         private readonly ISanctionRepository sanctionRepository; // репозиторий санкций
+        private readonly IMatchRepository matchRepository;        // репозиторий матчей (для проверки статуса)
+
+        private static readonly short[] TerminalStatusCodes = [3, 5, 6]; // Завершён, Отменён, Техническое поражение
         #endregion
 
         #region Конструкторы
-        public SanctionService(ISanctionRepository sanctionRepository) // конструктор с внедрением зависимости
+        public SanctionService(ISanctionRepository sanctionRepository, IMatchRepository matchRepository) // конструктор с внедрением зависимости
         {
             this.sanctionRepository = sanctionRepository;
+            this.matchRepository = matchRepository;
         }
         #endregion
 
@@ -35,6 +39,12 @@ namespace VolleyballIS.Application.Services
 
         public async Task<SanctionDto> CreateSanctionAsync(CreateSanctionDto dto) // зарегистрировать санкцию
         {
+            T14Match? match = await matchRepository.GetByIdAsync(dto.MatchId);
+            if (match == null)
+                throw new KeyNotFoundException($"Матч с идентификатором {dto.MatchId} не найден");
+            if (TerminalStatusCodes.Contains(match.StatusCode))
+                throw new InvalidOperationException("Нельзя добавлять санкции в завершённый, отменённый или технически проигранный матч");
+
             if (dto.RecipientTypeCode == 1 && dto.PlayerId == null)
             {
                 throw new InvalidOperationException("Для получателя «Игрок» требуется указать игрока");
@@ -74,8 +84,23 @@ namespace VolleyballIS.Application.Services
         {
             T18Sanction? existing = await sanctionRepository.GetByIdAsync(id);
             if (existing == null)
-            {
                 throw new KeyNotFoundException($"Санкция с идентификатором {id} не найдена");
+
+            T14Match? match = await matchRepository.GetByIdAsync(existing.MatchId);
+            if (match != null && TerminalStatusCodes.Contains(match.StatusCode))
+                throw new InvalidOperationException("Нельзя изменять санкции в завершённом, отменённом или технически проигранном матче");
+
+            if (dto.RecipientTypeCode == 1 && dto.PlayerId == null)
+            {
+                throw new InvalidOperationException("Для получателя «Игрок» требуется указать игрока");
+            }
+            if (dto.RecipientTypeCode != 1 && dto.DelegationMemberId == null)
+            {
+                throw new InvalidOperationException("Для нечлена-команды требуется указать члена делегации");
+            }
+            if (dto.SanctionKindCode == 2 && dto.DelayViolationCode == null)
+            {
+                throw new InvalidOperationException("Для нарушения задержки игры требуется указать код нарушения");
             }
             existing.TeamId = dto.TeamId;
             existing.PlayerId = dto.PlayerId;
@@ -97,11 +122,14 @@ namespace VolleyballIS.Application.Services
 
         public async Task DeleteSanctionAsync(int id) // удалить санкцию
         {
-            bool exists = await sanctionRepository.ExistsAsync(id);
-            if (!exists)
-            {
+            T18Sanction? sanction = await sanctionRepository.GetByIdAsync(id);
+            if (sanction == null)
                 throw new KeyNotFoundException($"Санкция с идентификатором {id} не найдена");
-            }
+
+            T14Match? match = await matchRepository.GetByIdAsync(sanction.MatchId);
+            if (match != null && TerminalStatusCodes.Contains(match.StatusCode))
+                throw new InvalidOperationException("Нельзя удалять санкции в завершённом, отменённом или технически проигранном матче");
+
             await sanctionRepository.DeleteAsync(id);
         }
 

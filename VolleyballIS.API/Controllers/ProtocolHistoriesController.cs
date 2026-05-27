@@ -54,10 +54,15 @@ namespace VolleyballIS.API.Controllers
                 ProtocolHistoryDto result = await historyService.CreateEntryAsync(dto);
                 return CreatedAtAction(nameof(GetById), new { protocolId, id = result.Id }, result);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            // прочие исключения — 500 Internal Server Error
         }
         #endregion
     }

@@ -8,13 +8,20 @@ namespace VolleyballIS.Application.Services
     public class MatchService : IMatchService
     {
         #region Поля
-        private readonly IMatchRepository matchRepository; // репозиторий матчей
+        private readonly IMatchRepository matchRepository;           // репозиторий матчей
+        private readonly ITournamentRepository tournamentRepository; // репозиторий турниров (для кросс-валидации)
+        private readonly IGroupRepository groupRepository;           // репозиторий групп (для кросс-валидации)
         #endregion
 
         #region Конструкторы
-        public MatchService(IMatchRepository matchRepository) // конструктор с внедрением зависимости
+        public MatchService(
+            IMatchRepository matchRepository,
+            ITournamentRepository tournamentRepository,
+            IGroupRepository groupRepository) // конструктор с внедрением зависимостей
         {
             this.matchRepository = matchRepository;
+            this.tournamentRepository = tournamentRepository;
+            this.groupRepository = groupRepository;
         }
         #endregion
 
@@ -42,10 +49,8 @@ namespace VolleyballIS.Application.Services
 
         public async Task<MatchDto> CreateMatchAsync(CreateMatchDto dto) // создать матч
         {
-            if (dto.HomeTeamId == dto.GuestTeamId)
-            {
-                throw new InvalidOperationException("Команда-хозяин и команда-гость не могут совпадать");
-            }
+            await ValidateMatchAsync(dto.HomeTeamId, dto.GuestTeamId, dto.TournamentId,
+                dto.MatchDate, dto.GroupId, dto.CoinTossWinnerTeamId, dto.FirstServeTeamId);
 
             T14Match match = new T14Match
             {
@@ -79,10 +84,8 @@ namespace VolleyballIS.Application.Services
                 throw new KeyNotFoundException($"Матч с идентификатором {id} не найден");
             }
 
-            if (dto.HomeTeamId == dto.GuestTeamId)
-            {
-                throw new InvalidOperationException("Команда-хозяин и команда-гость не могут совпадать");
-            }
+            await ValidateMatchAsync(dto.HomeTeamId, dto.GuestTeamId, dto.TournamentId,
+                dto.MatchDate, dto.GroupId, dto.CoinTossWinnerTeamId, dto.FirstServeTeamId);
 
             existing.TournamentId = dto.TournamentId;
             existing.HomeTeamId = dto.HomeTeamId;
@@ -113,6 +116,52 @@ namespace VolleyballIS.Application.Services
                 throw new KeyNotFoundException($"Матч с идентификатором {id} не найден");
             }
             await matchRepository.DeleteAsync(id);
+        }
+
+        private async Task ValidateMatchAsync(
+            int homeTeamId, int guestTeamId,
+            int tournamentId, DateOnly matchDate,
+            int? groupId, int? coinTossWinnerTeamId, int? firstServeTeamId) // кросс-валидация матча
+        {
+            if (homeTeamId == guestTeamId)
+            {
+                throw new InvalidOperationException("Команда-хозяин и команда-гость не могут совпадать");
+            }
+
+            T10Tournament? tournament = await tournamentRepository.GetByIdAsync(tournamentId);
+            if (tournament == null)
+            {
+                throw new InvalidOperationException($"Турнир с идентификатором {tournamentId} не найден");
+            }
+
+            if (matchDate < tournament.StartDate || matchDate > tournament.EndDate)
+            {
+                throw new InvalidOperationException(
+                    $"Дата матча ({matchDate}) должна быть в пределах дат турнира ({tournament.StartDate}–{tournament.EndDate})");
+            }
+
+            if (groupId.HasValue)
+            {
+                T11Group? group = await groupRepository.GetByIdAsync(groupId.Value);
+                if (group == null || group.TournamentId != tournamentId)
+                {
+                    throw new InvalidOperationException("Группа не принадлежит данному турниру");
+                }
+            }
+
+            if (coinTossWinnerTeamId.HasValue
+                && coinTossWinnerTeamId.Value != homeTeamId
+                && coinTossWinnerTeamId.Value != guestTeamId)
+            {
+                throw new InvalidOperationException("Победитель жеребьёвки должен быть одной из команд матча");
+            }
+
+            if (firstServeTeamId.HasValue
+                && firstServeTeamId.Value != homeTeamId
+                && firstServeTeamId.Value != guestTeamId)
+            {
+                throw new InvalidOperationException("Подающая команда должна быть одной из команд матча");
+            }
         }
 
         private static MatchDto MapToDto(T14Match match) // маппинг сущности T14Match в MatchDto
@@ -146,7 +195,9 @@ namespace VolleyballIS.Application.Services
                 FirstServeTeamId = match.FirstServeTeamId,
                 FirstServeTeamName = match.FirstServeTeam?.Name,
                 HasVideoChallenge = match.HasVideoChallenge,
-                NetHeight = match.NetHeight
+                NetHeight = match.NetHeight,
+                TournamentSetsToWin = match.Tournament?.SetsToWin ?? 3,
+                TournamentTiebreakScoreTarget = match.Tournament?.TiebreakScoreTarget ?? 15
             };
             return result;
         }

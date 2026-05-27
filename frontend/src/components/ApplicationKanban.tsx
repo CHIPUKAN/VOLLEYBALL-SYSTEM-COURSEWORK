@@ -22,7 +22,7 @@ const COLUMNS = [
 // kanban заявок на турниры
 const ApplicationKanban: React.FC<ApplicationKanbanProps> = ({
   applications,
-  statuses,
+  statuses: _statuses,
   onStatusChange,
   canReview,
 }) => {
@@ -36,7 +36,7 @@ const ApplicationKanban: React.FC<ApplicationKanbanProps> = ({
   const getStatusCode = (app: Application): number =>
     optimistic.get(app.id) ?? app.statusCode;
 
-  const handleDrop = async (e: React.DragEvent, targetStatusCode: number, targetStatusName: string) => {
+  const handleDrop = async (e: React.DragEvent, targetStatusCode: number, _targetStatusName: string) => {
     e.preventDefault();
     setDragOverCol(null);
     if (!canReview) return;

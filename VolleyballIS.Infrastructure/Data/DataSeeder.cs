@@ -183,20 +183,56 @@ namespace VolleyballIS.Infrastructure.Data
 
         private static async Task SeedEventTypes(VolleyballDbContext db) // С9. Типы событий матча
         {
-            if (await db.EventTypes.AnyAsync()) return;
+            // upsert: добавляем новые типы и обновляем существующие
+            var allTypes = new List<S9EventType>
+            {
+                new S9EventType { Code = 1,  Name = "Замена игрока",            IsTeamEvent = true,  Description = "Плановая замена полевого игрока" },
+                new S9EventType { Code = 2,  Name = "Командный тайм-аут",        IsTeamEvent = true,  Description = "Тайм-аут по просьбе команды" },
+                new S9EventType { Code = 3,  Name = "Технический тайм-аут",      IsTeamEvent = false, Description = "Автоматический тайм-аут при счёте 8 и 16 в партиях 1-4" },
+                new S9EventType { Code = 4,  Name = "Очко хозяев",               IsTeamEvent = true,  Description = "Команда-хозяин выиграла розыгрыш" },
+                new S9EventType { Code = 5,  Name = "Очко гостей",               IsTeamEvent = true,  Description = "Команда-гость выиграла розыгрыш" },
+                new S9EventType { Code = 6,  Name = "Начало партии",             IsTeamEvent = false, Description = "Партия начата" },
+                new S9EventType { Code = 7,  Name = "Конец партии",              IsTeamEvent = false, Description = "Партия завершена" },
+                new S9EventType { Code = 8,  Name = "Замена либеро",             IsTeamEvent = true,  Description = "Выход/возврат либеро" },
+                new S9EventType { Code = 9,  Name = "Экстренная замена",         IsTeamEvent = true,  Description = "Замена по медицинским показаниям" },
+                new S9EventType { Code = 10, Name = "Видеопросмотр (challenge)", IsTeamEvent = true,  Description = "Запрос видеопросмотра" },
+                new S9EventType { Code = 11, Name = "Эйс",                       IsTeamEvent = true,  Description = "Очко с подачи" },
+                new S9EventType { Code = 12, Name = "Ошибка подачи",             IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 13, Name = "Подача",                    IsTeamEvent = true,  Description = "Подача введена в игру (нейтральное)" },
+                new S9EventType { Code = 14, Name = "Приём отличный",            IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 15, Name = "Приём хороший",             IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 16, Name = "Приём слабый",              IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 17, Name = "Ошибка приёма",             IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 18, Name = "Передача",                  IsTeamEvent = true,  Description = "Связующая передача" },
+                new S9EventType { Code = 19, Name = "Очко атаки",                IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 20, Name = "Атака заблокирована",       IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 21, Name = "Ошибка атаки",              IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 22, Name = "Блок-очко",                 IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 23, Name = "Блок-касание",              IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 24, Name = "Ошибка блока",              IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 25, Name = "Техническое очко",          IsTeamEvent = true,  Description = "Очко без выбора игрока (кнопка +1)" },
+                new S9EventType { Code = 26, Name = "Ошибка передачи",           IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 27, Name = "Касание сетки",             IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 28, Name = "Заступ",                    IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 29, Name = "Ошибка расстановки",        IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 30, Name = "Двойное касание",           IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 31, Name = "Четыре касания",            IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 32, Name = "Захват мяча",               IsTeamEvent = true,  Description = null },
+                new S9EventType { Code = 33, Name = "Спорный мяч",               IsTeamEvent = true,  Description = null },
+            };
 
-            db.EventTypes.AddRange(
-                new S9EventType { Code = 1,  Name = "Замена игрока",              IsTeamEvent = true,  Description = "Плановая замена полевого игрока" },
-                new S9EventType { Code = 2,  Name = "Командный тайм-аут",          IsTeamEvent = true,  Description = "Тайм-аут по просьбе команды" },
-                new S9EventType { Code = 3,  Name = "Технический тайм-аут",        IsTeamEvent = false, Description = "Автоматический тайм-аут при счёте 8 и 16 в партиях 1-4" },
-                new S9EventType { Code = 4,  Name = "Очко хозяев",                 IsTeamEvent = true,  Description = "Команда-хозяин выиграла розыгрыш" },
-                new S9EventType { Code = 5,  Name = "Очко гостей",                 IsTeamEvent = true,  Description = "Команда-гость выиграла розыгрыш" },
-                new S9EventType { Code = 6,  Name = "Начало партии",               IsTeamEvent = false, Description = "Партия начата" },
-                new S9EventType { Code = 7,  Name = "Конец партии",                IsTeamEvent = false, Description = "Партия завершена" },
-                new S9EventType { Code = 8,  Name = "Замена либеро",               IsTeamEvent = true,  Description = "Выход/возврат либеро" },
-                new S9EventType { Code = 9,  Name = "Экстренная замена",           IsTeamEvent = true,  Description = "Замена по медицинским показаниям" },
-                new S9EventType { Code = 10, Name = "Видеопросмотр (challenge)",   IsTeamEvent = true,  Description = "Запрос видеопросмотра" }
-            );
+            foreach (S9EventType t in allTypes)
+            {
+                S9EventType? existing = await db.EventTypes.FindAsync(t.Code);
+                if (existing == null)
+                    db.EventTypes.Add(t);
+                else
+                {
+                    existing.Name = t.Name;
+                    existing.Description = t.Description;
+                    existing.IsTeamEvent = t.IsTeamEvent;
+                }
+            }
             await db.SaveChangesAsync();
         }
 

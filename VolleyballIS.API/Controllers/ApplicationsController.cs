@@ -74,8 +74,8 @@ namespace VolleyballIS.API.Controllers
         }
 
         [HttpPut("{id:int}")]
-        [Authorize(Roles = "Суперадминистратор,ТренерКоманды,Организатор,ПредставительКоманды")]
-        public async Task<ActionResult<ApplicationDto>> Update(int id, [FromBody] UpdateApplicationDto dto) // обновить статус заявки
+        [Authorize(Roles = "Суперадминистратор,Организатор")]
+        public async Task<ActionResult<ApplicationDto>> Update(int id, [FromBody] UpdateApplicationDto dto) // обновить статус заявки (только рецензент)
         {
             if (!ModelState.IsValid)
             {

@@ -92,6 +92,17 @@ namespace VolleyballIS.Infrastructure.Repositories
             return lineup;
         }
 
+        public async Task DeleteByMatchTeamSetPositionAsync(int matchId, int teamId, short setNumber, short positionNo) // удалить одну позицию расстановки
+        {
+            R1StartingLineup? lineup = await dbContext.StartingLineups.FirstOrDefaultAsync(l =>
+                l.MatchId == matchId && l.TeamId == teamId && l.SetNumber == setNumber && l.PositionNo == positionNo);
+            if (lineup != null)
+            {
+                dbContext.StartingLineups.Remove(lineup);
+                await dbContext.SaveChangesAsync();
+            }
+        }
+
         public async Task DeleteByMatchTeamSetAsync(int matchId, int teamId, short setNumber) // удалить расстановку команды в партии
         {
             List<R1StartingLineup> lineups = await dbContext.StartingLineups

@@ -221,8 +221,8 @@ const MatchDetailPage: React.FC = () => {
     try {
       const [data, refList, roles] = await Promise.all([
         refereeAssignmentsApi.getAll(matchId),
-        lookupsApi.getReferees(),
-        lookupsApi.getRefereeRoles(),
+        lookupsApi.getReferees().catch((): LookupItemDto[] => []),
+        lookupsApi.getRefereeRoles().catch((): LookupDto[] => []),
       ]);
       setReferees(data);
       setRefereesLookup(refList);
@@ -261,9 +261,22 @@ const MatchDetailPage: React.FC = () => {
     try {
       const statusInProgress = statuses.find(s => s.name === 'В процессе')?.code;
       if (statusInProgress && match) {
-        await matchesApi.update(matchId, { ...match, statusCode: statusInProgress });
+        await matchesApi.update(matchId, {
+          ...match,
+          statusCode: statusInProgress,
+          firstServeTeamId: toss.servingTeamId,
+          coinTossWinnerTeamId: toss.servingTeamId,
+          coinTossChoiceCode: 1,
+        });
       }
-      setMatch(prev => prev ? { ...prev, statusName: 'В процессе' } : prev);
+      setMatch(prev => prev ? {
+        ...prev,
+        statusCode: statuses.find(s => s.name === 'В процессе')?.code ?? prev.statusCode,
+        statusName: 'В процессе',
+        firstServeTeamId: toss.servingTeamId,
+        coinTossWinnerTeamId: toss.servingTeamId,
+        coinTossChoiceCode: 1,
+      } : prev);
     } catch { message.error('Не удалось обновить статус матча'); }
     setCoinTossResult(toss);
     setPreWizardOpen(false);
@@ -368,7 +381,8 @@ const MatchDetailPage: React.FC = () => {
     if (protocol) {
       protocolForm.setFieldsValue({ statusCode: protocol.statusCode });
     } else {
-      protocolForm.setFieldsValue({ statusCode: 1 });
+      const defaultCode = protocolStatuses.find(s => s.name === 'Черновик')?.code ?? protocolStatuses[0]?.code;
+      protocolForm.setFieldsValue({ statusCode: defaultCode });
     }
     setProtocolModalOpen(true);
   };
@@ -514,11 +528,11 @@ const MatchDetailPage: React.FC = () => {
     { title: '№', dataIndex: 'setNumber', key: 'setNumber', width: 60 },
     {
       title: 'Счёт хозяев', dataIndex: 'homeScore', key: 'homeScore',
-      render: (v: number, r: SetDto) => <Text strong style={{ color: v > r.guestScore ? '#52c41a' : 'inherit' }}>{v}</Text>,
+      render: (v: number | null, r: SetDto) => v == null ? '—' : <Text strong style={{ color: v > (r.guestScore ?? 0) ? '#52c41a' : 'inherit' }}>{v}</Text>,
     },
     {
       title: 'Счёт гостей', dataIndex: 'guestScore', key: 'guestScore',
-      render: (v: number, r: SetDto) => <Text strong style={{ color: v > r.homeScore ? '#52c41a' : 'inherit' }}>{v}</Text>,
+      render: (v: number | null, r: SetDto) => v == null ? '—' : <Text strong style={{ color: v > (r.homeScore ?? 0) ? '#52c41a' : 'inherit' }}>{v}</Text>,
     },
     { title: 'Длит. (мин)', dataIndex: 'durationMin', key: 'durationMin', render: (v: number) => v ?? '—' },
     {
@@ -573,7 +587,7 @@ const MatchDetailPage: React.FC = () => {
   ];
 
   const refColumns: ColumnsType<RefereeAssignment> = [
-    { title: 'Судья', dataIndex: 'refereeName', key: 'refereeName' },
+    { title: 'Судья', dataIndex: 'refereeFullName', key: 'refereeFullName' },
     { title: 'Роль', dataIndex: 'roleName', key: 'roleName' },
     {
       title: '', key: 'del', width: 60,
@@ -699,6 +713,7 @@ const MatchDetailPage: React.FC = () => {
         )}
         <Descriptions column={{ xs: 1, sm: 2, md: 3 }} size="small">
           <Descriptions.Item label="Турнир">{match.tournamentName ?? '—'}</Descriptions.Item>
+          <Descriptions.Item label="Формат матча">до {match.tournamentSetsToWin ?? 3} {(match.tournamentSetsToWin ?? 3) === 1 ? 'партии' : 'побед'}</Descriptions.Item>
           <Descriptions.Item label="Дата">{match.matchDate ? dayjs(match.matchDate).format('DD.MM.YYYY') : '—'}</Descriptions.Item>
           <Descriptions.Item label="Время">{match.startTime ? match.startTime.slice(0, 5) : '—'}</Descriptions.Item>
           <Descriptions.Item label="Площадка">{match.venueName ?? '—'}</Descriptions.Item>
@@ -743,8 +758,8 @@ const MatchDetailPage: React.FC = () => {
                     locale={{ emptyText: 'Партии не зарегистрированы' }}
                     summary={(data) => {
                       if (data.length === 0) return null;
-                      const th = data.reduce((a, r) => a + r.homeScore, 0);
-                      const tg = data.reduce((a, r) => a + r.guestScore, 0);
+                      const th = data.reduce((a, r) => a + (r.homeScore ?? 0), 0);
+                      const tg = data.reduce((a, r) => a + (r.guestScore ?? 0), 0);
                       const td = data.reduce((a, r) => a + (r.durationMin ?? 0), 0);
                       return (
                         <Table.Summary.Row>
@@ -1290,9 +1305,9 @@ const MatchDetailPage: React.FC = () => {
           match={match}
           onComplete={handleStartMatch}
           onSkip={async () => {
-            // statusCode 2 = В процессе
-            try { await matchesApi.update(matchId, { ...match, statusCode: 2 }); } catch { /* не блокирует */ }
-            setMatch(prev => prev ? { ...prev, statusCode: 2, statusName: 'В процессе' } : prev);
+            const inProgressCode = statuses.find(s => s.name === 'В процессе')?.code ?? 2;
+            try { await matchesApi.update(matchId, { ...match, statusCode: inProgressCode }); } catch { /* не блокирует */ }
+            setMatch(prev => prev ? { ...prev, statusCode: inProgressCode, statusName: 'В процессе' } : prev);
             setPreWizardOpen(false);
             setLiveMatchOpen(true);
           }}
@@ -1306,6 +1321,7 @@ const MatchDetailPage: React.FC = () => {
           open={liveMatchOpen}
           match={match}
           initialState={coinTossResult ?? undefined}
+          completedStatusCode={statuses.find(s => s.name === 'Завершён')?.code ?? 3}
           onClose={() => {
             setLiveMatchOpen(false);
             loadSets();

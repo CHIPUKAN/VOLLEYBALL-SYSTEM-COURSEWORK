@@ -105,6 +105,8 @@ const TournamentsPage: React.FC = () => {
       maxPlayersPerApp: record.maxPlayersPerApp,
       ageCategory: record.ageCategory,
       applicationDeadline: record.applicationDeadline ? dayjs(record.applicationDeadline) : undefined,
+      setsToWin: record.setsToWin,
+      tiebreakScoreTarget: record.tiebreakScoreTarget,
     });
     setModalOpen(true);
   };
@@ -136,6 +138,8 @@ const TournamentsPage: React.FC = () => {
       organizerId: values.organizerId as number,
       formatCode: values.formatCode as number,
       scoringSystemCode: values.scoringSystemCode as number,
+      setsToWin: (values.setsToWin as number) ?? 3,
+      tiebreakScoreTarget: (values.tiebreakScoreTarget as number) ?? 15,
       maxTeams: values.maxTeams as number,
       description: values.description as string,
       gender: values.gender as string,
@@ -195,6 +199,13 @@ const TournamentsPage: React.FC = () => {
       dataIndex: 'formatName',
       key: 'formatName',
       render: (v: string, r: Tournament) => v ?? r.formatCode,
+    },
+    {
+      title: 'Матч до',
+      key: 'setsToWin',
+      width: 100,
+      render: (_: unknown, r: Tournament) =>
+        `до ${r.setsToWin} ${r.setsToWin === 1 ? 'партии' : 'побед'}`,
     },
     {
       title: 'Организатор',
@@ -439,8 +450,48 @@ const TournamentsPage: React.FC = () => {
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="applicationDeadline" label="Дедлайн заявок">
+              <Form.Item
+                name="applicationDeadline"
+                label="Дедлайн заявок"
+                dependencies={['dates']}
+                rules={[
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value) return Promise.resolve();
+                      const dates = getFieldValue('dates') as [import('dayjs').Dayjs, import('dayjs').Dayjs] | undefined;
+                      if (!dates?.[0]) return Promise.resolve();
+                      if ((value as import('dayjs').Dayjs).isAfter(dates[0])) {
+                        return Promise.reject(new Error('Дедлайн должен быть не позже даты начала турнира'));
+                      }
+                      return Promise.resolve();
+                    },
+                  }),
+                ]}
+              >
                 <DatePicker style={{ width: '100%' }} format="DD.MM.YYYY" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="setsToWin" label="Побед для победы в матче" initialValue={3}>
+                <Select
+                  options={[
+                    { value: 1, label: '1 (одна партия)' },
+                    { value: 2, label: '2 (best-of-3)' },
+                    { value: 3, label: '3 (best-of-5)' },
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="tiebreakScoreTarget" label="Очков в решающей партии" initialValue={15}>
+                <Select
+                  options={[
+                    { value: 15, label: '15 (стандарт)' },
+                    { value: 25, label: '25 (как обычная партия)' },
+                  ]}
+                />
               </Form.Item>
             </Col>
           </Row>

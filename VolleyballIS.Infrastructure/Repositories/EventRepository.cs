@@ -73,12 +73,15 @@ namespace VolleyballIS.Infrastructure.Repositories
 
         public async Task DeleteAsync(int id) // удалить событие
         {
-            T17Event? ev = await dbContext.Events.FindAsync(id);
-            if (ev != null)
-            {
-                dbContext.Events.Remove(ev);
-                await dbContext.SaveChangesAsync();
-            }
+            // GetByIdAsync подгружает Substitution и Timeout, чтобы их удалить до удаления события
+            // (FK-ограничение ON DELETE NO ACTION запрещает удалять родителя при наличии дочерних записей)
+            T17Event? ev = await GetByIdAsync(id);
+            if (ev == null) return;
+
+            if (ev.Substitution != null) dbContext.Substitutions.Remove(ev.Substitution);
+            if (ev.Timeout != null) dbContext.Timeouts.Remove(ev.Timeout);
+            dbContext.Events.Remove(ev);
+            await dbContext.SaveChangesAsync();
         }
 
         public async Task<bool> ExistsAsync(int id) // проверить существование

@@ -38,11 +38,13 @@ namespace VolleyballIS.API.Controllers
                 return BadRequest(ModelState);
             }
 
-            // при самостоятельной регистрации выдаём только безопасные роли
-            string[] allowedRoles = ["ТренерКоманды", "СудьяМатча", "ПредставительКоманды", "Организатор", "Зритель"];
-            if (!allowedRoles.Contains(dto.Role))
+            // при самостоятельной регистрации разрешены только безопасные роли (без суперадминистратора и секретаря)
+            if (!Roles.SelfRegistration.Contains(dto.Role))
             {
-                dto.Role = "Зритель";
+                return BadRequest(new
+                {
+                    message = $"Недопустимая роль «{dto.Role}». Разрешены: {string.Join(", ", Roles.SelfRegistration)}"
+                });
             }
 
             try

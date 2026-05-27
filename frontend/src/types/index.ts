@@ -114,7 +114,7 @@ export interface Season {
   name: string;
   startDate: string;
   endDate: string;
-  status: string; // "активен" | "завершён" | "планируемый"
+  status: string; // "активен" | "завершён"
 }
 
 // организаторы
@@ -163,6 +163,8 @@ export interface Tournament {
   formatName?: string;
   scoringSystemCode: number;
   scoringSystemName?: string;
+  setsToWin: number;
+  tiebreakScoreTarget: number;
 }
 
 // группы
@@ -201,6 +203,8 @@ export interface Match {
   firstServeTeamId?: number;
   hasVideoChallenge: boolean;
   netHeight?: number;
+  tournamentSetsToWin?: number;
+  tournamentTiebreakScoreTarget?: number;
 }
 
 // заявки
@@ -234,7 +238,7 @@ export interface RefereeAssignment {
   matchId: number;
   matchDescription?: string;
   refereeId: number;
-  refereeName?: string;
+  refereeFullName?: string;
   roleCode: number;
   roleName?: string;
 }
@@ -254,8 +258,8 @@ export interface Protocol {
 export interface SetDto {
   matchId: number;
   setNumber: number;
-  homeScore: number;
-  guestScore: number;
+  homeScore: number | null;
+  guestScore: number | null;
   durationMin?: number;
 }
 

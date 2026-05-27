@@ -19,6 +19,7 @@ namespace VolleyballIS.Application.DTOs.Events
         public short SetNumber { get; set; } // номер партии
 
         [Required(ErrorMessage = "Порядковый номер обязателен")]
+        [Range(1, int.MaxValue, ErrorMessage = "Порядковый номер должен быть положительным")]
         public int GlobalSeqInSet { get; set; } // порядковый номер события в партии
 
         public short HomeScoreAtMoment { get; set; } // счёт хозяев в момент события

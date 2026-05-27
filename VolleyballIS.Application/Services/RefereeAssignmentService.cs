@@ -9,6 +9,9 @@ namespace VolleyballIS.Application.Services
     {
         #region Поля
         private readonly IRefereeAssignmentRepository assignmentRepository; // репозиторий назначений
+
+        // роли, допускающие только одно назначение на матч (главный, второй судья, секретарь)
+        private static readonly short[] SingletonRoles = [1, 2, 3];
         #endregion
 
         #region Конструкторы
@@ -41,6 +44,16 @@ namespace VolleyballIS.Application.Services
                 throw new InvalidOperationException("Данный судья уже назначен на этот матч");
             }
 
+            if (SingletonRoles.Contains(dto.RoleCode))
+            {
+                bool roleTaken = await assignmentRepository.RoleExistsForMatchAsync(dto.MatchId, dto.RoleCode);
+                if (roleTaken)
+                {
+                    throw new InvalidOperationException(
+                        $"Роль с кодом {dto.RoleCode} уже назначена на этот матч. Допускается только один судья в данной роли");
+                }
+            }
+
             T15RefereeAssignment assignment = new T15RefereeAssignment
             {
                 MatchId = dto.MatchId,
@@ -59,6 +72,16 @@ namespace VolleyballIS.Application.Services
             if (existing == null)
             {
                 throw new KeyNotFoundException($"Назначение с идентификатором {id} не найдено");
+            }
+
+            if (SingletonRoles.Contains(dto.RoleCode) && dto.RoleCode != existing.RoleCode)
+            {
+                bool roleTaken = await assignmentRepository.RoleExistsForMatchAsync(existing.MatchId, dto.RoleCode, id);
+                if (roleTaken)
+                {
+                    throw new InvalidOperationException(
+                        $"Роль с кодом {dto.RoleCode} уже назначена на этот матч. Допускается только один судья в данной роли");
+                }
             }
 
             existing.RoleCode = dto.RoleCode;

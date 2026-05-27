@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import type { Tournament } from '../types/index';
 import { Tree, Spin, Typography } from 'antd';
 import {
   CalendarOutlined, TrophyOutlined, ApartmentOutlined,
@@ -28,6 +29,7 @@ const TournamentTree: React.FC<TournamentTreeProps> = ({
   const [treeData, setTreeData] = useState<DataNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
+  const tournamentsCache = useRef<Tournament[] | null>(null);
 
   // начальная загрузка сезонов
   React.useEffect(() => {
@@ -56,8 +58,10 @@ const TournamentTree: React.FC<TournamentTreeProps> = ({
 
     if (key.startsWith('season-')) {
       const seasonId = Number(key.replace('season-', ''));
-      const allTournaments = await tournamentsApi.getAll();
-      const filtered = allTournaments.filter(t => t.seasonId === seasonId);
+      if (tournamentsCache.current == null) {
+        tournamentsCache.current = await tournamentsApi.getAll();
+      }
+      const filtered = tournamentsCache.current.filter(t => t.seasonId === seasonId);
       const children: DataNode[] = filtered.map(t => ({
         key: `tournament-${t.id}`,
         title: (

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using VolleyballIS.Infrastructure.Data;
@@ -11,9 +12,11 @@ using VolleyballIS.Infrastructure.Data;
 namespace VolleyballIS.Infrastructure.Migrations
 {
     [DbContext(typeof(VolleyballDbContext))]
-    partial class VolleyballDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260526223429_AddBestOf3Support")]
+    partial class AddBestOf3Support
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

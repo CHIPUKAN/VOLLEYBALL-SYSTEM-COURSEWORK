@@ -32,9 +32,11 @@ const POSITION_NAMES: Record<number, string> = {
   6: 'Центр задний',
 };
 
-// макет поля: передняя линия [2,3,4], задняя [1,6,5] — позиция 1 слева у обеих команд
-const FRONT_POSITIONS = [2, 3, 4];
-const BACK_POSITIONS = [1, 6, 5];
+// макет поля: хозяева — передняя [2,3,4], задняя [1,6,5]; гости — зеркально
+const FRONT_POSITIONS_HOME  = [2, 3, 4];
+const BACK_POSITIONS_HOME   = [1, 6, 5];
+const FRONT_POSITIONS_GUEST = [4, 3, 2];
+const BACK_POSITIONS_GUEST  = [5, 6, 1];
 
 // компонент волейбольного поля
 const VolleyCourt: React.FC<VolleyCourtProps> = ({
@@ -214,10 +216,10 @@ const VolleyCourt: React.FC<VolleyCourtProps> = ({
         <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 10 }}>
           <div style={halfStyle}>
             <div style={rowStyle}>
-              {BACK_POSITIONS.map(pos => renderSlot(homeTeamId, pos))}
+              {BACK_POSITIONS_HOME.map(pos => renderSlot(homeTeamId, pos))}
             </div>
             <div style={rowStyle}>
-              {FRONT_POSITIONS.map(pos => renderSlot(homeTeamId, pos))}
+              {FRONT_POSITIONS_HOME.map(pos => renderSlot(homeTeamId, pos))}
             </div>
           </div>
         </div>
@@ -233,10 +235,10 @@ const VolleyCourt: React.FC<VolleyCourtProps> = ({
         <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 10 }}>
           <div style={halfStyle}>
             <div style={rowStyle}>
-              {[2, 3, 4].map(pos => renderSlot(guestTeamId, pos))}
+              {FRONT_POSITIONS_GUEST.map(pos => renderSlot(guestTeamId, pos))}
             </div>
             <div style={rowStyle}>
-              {[1, 6, 5].map(pos => renderSlot(guestTeamId, pos))}
+              {BACK_POSITIONS_GUEST.map(pos => renderSlot(guestTeamId, pos))}
             </div>
           </div>
         </div>

@@ -53,6 +53,11 @@ namespace VolleyballIS.Application.Services
             await lineupRepository.DeleteByMatchTeamSetAsync(matchId, teamId, setNumber);
         }
 
+        public async Task DeletePositionAsync(int matchId, int teamId, short setNumber, short positionNo) // удалить одну позицию расстановки
+        {
+            await lineupRepository.DeleteByMatchTeamSetPositionAsync(matchId, teamId, setNumber, positionNo);
+        }
+
         private static StartingLineupDto MapToDto(R1StartingLineup l) // маппинг R1StartingLineup -> StartingLineupDto
         {
             string? playerFio = l.Player != null

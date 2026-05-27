@@ -25,5 +25,11 @@ namespace VolleyballIS.Application.Common
         [
             SuperAdmin, Organizer, Coach, Secretary, Referee, TeamRep, Spectator
         ];
+
+        // роли, доступные при самостоятельной регистрации (без суперадминистратора и секретаря)
+        public static readonly string[] SelfRegistration =
+        [
+            Coach, Referee, TeamRep, Organizer, Spectator
+        ];
     }
 }

@@ -162,7 +162,6 @@ const MatchKanbanCard: React.FC<KanbanCardProps> = ({
   navigate,
 }) => {
   const isLive = norm(match.statusName ?? '') === norm('В процессе');
-  const isDone = norm(match.statusName ?? '') === norm('Завершён');
 
   const menuItems = [
     { key: 'view', icon: <EyeOutlined />, label: 'Детали', onClick },

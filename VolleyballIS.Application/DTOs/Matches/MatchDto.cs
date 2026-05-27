@@ -59,6 +59,10 @@ namespace VolleyballIS.Application.DTOs.Matches
         public bool HasVideoChallenge { get; set; } // наличие видеопросмотра
 
         public decimal? NetHeight { get; set; } // высота сетки
+
+        public short TournamentSetsToWin { get; set; } // формат матча (до скольки побед по партиям), из турнира
+
+        public short TournamentTiebreakScoreTarget { get; set; } // порог решающей партии, из турнира
         #endregion
     }
 }

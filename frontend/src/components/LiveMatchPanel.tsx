@@ -1,6 +1,6 @@
-﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Modal, Row, Col, Card, Typography, Button, Tag, App, List, Popconfirm, Space, Badge,
+  Modal, Row, Col, Card, Typography, Button, Tag, App, List, Popconfirm, Space,
 } from 'antd';
 import { QuestionOutlined, WifiOutlined } from '@ant-design/icons';
 import type {
@@ -25,6 +25,9 @@ const log = import.meta.env.DEV
   ? (...args: unknown[]) => console.log('[LiveMatch]', ...args)
   : () => {};
 
+// фаза розыгрыша: pre_serve — между очками, in_play — мяч в игре
+type RallyPhase = 'pre_serve' | 'in_play';
+
 // событие в офлайн-буфере
 interface PendingEvent {
   id: string;
@@ -37,20 +40,28 @@ interface PendingEvent {
   seqInMatch: number;
 }
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 interface LiveMatchPanelProps {
   open: boolean;
   match: Match;
   initialState?: CoinTossResult;
   onClose: () => void;
+  completedStatusCode?: number; // код статуса «Завершён» из справочника
 }
 
 const SET_WIN_SCORE = 25;
-const TIE_BREAK_SCORE = 15;
 
-function isSetOver(homeScore: number, guestScore: number, setNumber: number): boolean {
-  const target = setNumber >= 5 ? TIE_BREAK_SCORE : SET_WIN_SCORE;
+function isSetOver(
+  homeScore: number,
+  guestScore: number,
+  setNumber: number,
+  setsToWin: number,
+  tiebreakTarget: number,
+): boolean {
+  const maxSetNumber = setsToWin * 2 - 1;
+  const isTiebreak = setNumber >= maxSetNumber && setsToWin > 1;
+  const target = isTiebreak ? tiebreakTarget : SET_WIN_SCORE;
   return (homeScore >= target || guestScore >= target) && Math.abs(homeScore - guestScore) >= 2;
 }
 
@@ -60,8 +71,12 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
   match,
   initialState,
   onClose,
+  completedStatusCode = 3,
 }) => {
   const { message, modal } = App.useApp();
+
+  const setsToWin = match.tournamentSetsToWin ?? 3;
+  const tiebreakTarget = match.tournamentTiebreakScoreTarget ?? 15;
 
   // live-стейт
   const [liveState, setLiveState] = useState<LiveMatchState>({
@@ -79,9 +94,14 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
   const [sanctionTypes, setSanctionTypes] = useState<LookupDto[]>([]);
   const [sanctionKinds, setSanctionKinds] = useState<LookupDto[]>([]);
   const [recipientTypes, setRecipientTypes] = useState<LookupDto[]>([]);
-  const [allPlayersLookup, setAllPlayersLookup] = useState<LookupItemDto[]>([]);
   const [homePlayersLookup, setHomePlayersLookup] = useState<LookupItemDto[]>([]);
   const [guestPlayersLookup, setGuestPlayersLookup] = useState<LookupItemDto[]>([]);
+
+  // максимальный globalSeqInSet по каждой партии (для корректного nextSeq даже при ограниченном recentEvents)
+  const [maxSeqPerSet, setMaxSeqPerSet] = useState<Map<number, number>>(new Map());
+
+  // фаза розыгрыша
+  const [rallyPhase, setRallyPhase] = useState<RallyPhase>('pre_serve');
 
   // UI стейт
   const [selectedPlayer, setSelectedPlayer] = useState<StartingLineup | null>(null);
@@ -103,7 +123,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
   // подсказки горячих клавиш
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
-  // контекстное меню 
+  // контекстное меню
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; player: StartingLineup } | null>(null);
 
   // офлайн-буфер
@@ -112,6 +132,15 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
 
   const timeoutTypesRef = useRef<LookupDto[]>([]);
   const nextSetServingRef = useRef<number | undefined>(undefined);
+
+  // вычислить следующий порядковый номер события в партии
+  const nextSeqInSet = useCallback((setNumber: number): number => {
+    const fromMap = maxSeqPerSet.get(setNumber) ?? 0;
+    const fromEvents = Math.max(0, ...recentEvents
+      .filter(e => e.setNumber === setNumber)
+      .map(e => e.globalSeqInSet ?? 0));
+    return Math.max(fromMap, fromEvents) + 1;
+  }, [maxSeqPerSet, recentEvents]);
 
   // офлайн/онлайн
   useEffect(() => {
@@ -133,14 +162,9 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
       const queue = [...pendingQueue];
       setPendingQueue([]);
       for (const ev of queue) {
-        let dbName: string | null = null;
-        if (ev.actionResult.scoringEffect === 'acting') {
-          dbName = ev.actingTeamId === match.homeTeamId ? 'Очко хозяев' : 'Очко гостей';
-        } else if (ev.actionResult.scoringEffect === 'opposing') {
-          dbName = ev.actingTeamId === match.homeTeamId ? 'Очко гостей' : 'Очко хозяев';
-        }
-        const evType = dbName ? eventTypes.find(et => et.name === dbName) : null;
-        if (!evType) continue; // нейтральные события не пишем
+        // используем eventTypeName напрямую — не вычисляем из scoringEffect
+        const evType = eventTypes.find(et => et.name === ev.actionResult.eventTypeName);
+        if (!evType) continue;
         try {
           await eventsApi.create(match.id, {
             setNumber: ev.setNumber,
@@ -224,16 +248,22 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
         setRecipientTypes(recTypesData);
         setHomePlayersLookup(homeLookup);
         setGuestPlayersLookup(guestLookup);
-        setAllPlayersLookup([...homeLookup, ...guestLookup]);
+
+        // вычислить max globalSeqInSet по каждой партии из полного набора событий
+        const seqMap = new Map<number, number>();
+        for (const ev of eventsData) {
+          const prev = seqMap.get(ev.setNumber) ?? 0;
+          if ((ev.globalSeqInSet ?? 0) > prev) seqMap.set(ev.setNumber, ev.globalSeqInSet ?? 0);
+        }
+        setMaxSeqPerSet(seqMap);
 
         // вычислить текущий счёт из событий
         if (eventsData.length > 0) {
-          const lastEvent = eventsData[eventsData.length - 1];
           const maxSet = Math.max(...eventsData.map(e => e.setNumber));
 
           const setsData = await setsApi.getAll(match.id).catch(() => []);
-          const homeWins = setsData.filter(s => s.homeScore > s.guestScore).length;
-          const guestWins = setsData.filter(s => s.guestScore > s.homeScore).length;
+          const homeWins = setsData.filter(s => s.homeScore != null && s.guestScore != null && (s.homeScore ?? 0) > (s.guestScore ?? 0)).length;
+          const guestWins = setsData.filter(s => s.homeScore != null && s.guestScore != null && (s.guestScore ?? 0) > (s.homeScore ?? 0)).length;
 
           const setEvents = eventsData.filter(e => e.setNumber === maxSet);
           const lastSetEvent = setEvents[setEvents.length - 1];
@@ -245,24 +275,51 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
             sets: setsData.length > 0
               ? setsData.map(s => ({
                   setNumber: s.setNumber,
-                  homeScore: s.homeScore,
-                  guestScore: s.guestScore,
+                  homeScore: s.homeScore ?? 0,
+                  guestScore: s.guestScore ?? 0,
                   servingTeamId: initialState?.servingTeamId ?? match.homeTeamId,
                   isFinished: true,
-                })).concat(isSetOver(homeScore, guestScore, maxSet) ? [] : [{
+                })).concat(isSetOver(homeScore, guestScore, maxSet, setsToWin, tiebreakTarget) ? [] : [{
                   setNumber: maxSet,
                   homeScore,
                   guestScore,
-                  servingTeamId: lastEvent.teamId ?? (initialState?.servingTeamId ?? match.homeTeamId),
+                  servingTeamId: lastSetEvent.teamId ?? (initialState?.servingTeamId ?? match.homeTeamId),
                   isFinished: false,
                 }])
-              : [{ setNumber: maxSet, homeScore, guestScore, servingTeamId: lastEvent.teamId ?? (initialState?.servingTeamId ?? match.homeTeamId), isFinished: false }],
+              : [{ setNumber: maxSet, homeScore, guestScore, servingTeamId: lastSetEvent.teamId ?? (initialState?.servingTeamId ?? match.homeTeamId), isFinished: false }],
             homeMatchScore: homeWins,
             guestMatchScore: guestWins,
           });
 
           setRecentEvents(eventsData.slice(-20).reverse());
-          await loadLineups(maxSet);
+
+          // загрузить стартовую расстановку и применить замены текущей партии (Баг 12.4)
+          const startingLineups = await lineupsApi.getAll(match.id, { setNumber: maxSet });
+          const subEvents = eventsData
+            .filter(e => e.setNumber === maxSet && e.substitution != null)
+            .sort((a, b) => a.globalSeqInSet - b.globalSeqInSet);
+
+          if (subEvents.length === 0) {
+            setCurrentSetLineups(startingLineups);
+          } else {
+            let computedLineup = [...startingLineups];
+            for (const ev of subEvents) {
+              const sub = ev.substitution!;
+              const teamPlayers = ev.teamId === match.homeTeamId ? homeData : guestData;
+              const inP = teamPlayers.find(p => p.id === sub.subInPlayerId);
+              computedLineup = computedLineup.map(l =>
+                (l.teamId === ev.teamId && l.playerId === sub.subOutPlayerId)
+                  ? {
+                      ...l,
+                      playerId: sub.subInPlayerId,
+                      playerFullName: inP?.fullName ?? inP?.lastName ?? `Игрок ${sub.subInPlayerId}`,
+                      shirtNumber: inP?.jerseyNumber,
+                    }
+                  : l
+              );
+            }
+            setCurrentSetLineups(computedLineup);
+          }
         } else {
           await loadLineups(1);
         }
@@ -291,28 +348,26 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
         else newHomeScore++;
       }
 
-      // определяем тип события по DB-именам (только 'Очко хозяев' / 'Очко гостей' имеют смысл)
-      let dbEventTypeName: string | null = null;
-      if (actionResult.scoringEffect === 'acting') {
-        dbEventTypeName = actingTeamId === match.homeTeamId ? 'Очко хозяев' : 'Очко гостей';
-      } else if (actionResult.scoringEffect === 'opposing') {
-        dbEventTypeName = actingTeamId === match.homeTeamId ? 'Очко гостей' : 'Очко хозяев';
-      }
-      const evType = dbEventTypeName
-        ? eventTypes.find(et => et.name === dbEventTypeName)
+      // используем eventTypeName напрямую из actionResult
+      const evType = actionResult.eventTypeName
+        ? eventTypes.find(et => et.name === actionResult.eventTypeName)
         : null;
-      // нейтральные события (нет очков) не пишутся в БД
       const eventTypeCode = evType?.code ?? null;
+      log('eventType resolved:', actionResult.eventTypeName, '→', eventTypeCode);
 
       // порядковый номер = max по текущей партии + 1
-      const maxSeqInSet = Math.max(0, ...recentEvents
-        .filter(e => e.setNumber === liveState.currentSetNumber)
-        .map(e => e.globalSeqInSet ?? 0));
-      const nextGlobalSeq = maxSeqInSet + 1;
+      const nextGlobalSeq = nextSeqInSet(liveState.currentSetNumber);
 
       const newServingTeamId = actionResult.scoringEffect === 'neutral'
         ? servingTeamId
         : (actionResult.scoringEffect === 'acting' ? actingTeamId : (actingTeamId === match.homeTeamId ? match.guestTeamId : match.homeTeamId));
+
+      // обновить фазу розыгрыша
+      if (actionResult.scoringEffect !== 'neutral') {
+        setRallyPhase('pre_serve');
+      } else if (actionResult.code === 'serve_received') {
+        setRallyPhase('in_play');
+      }
 
       // офлайн: добавить в очередь
       if (!isOnline) {
@@ -324,7 +379,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
           setNumber: liveState.currentSetNumber,
           homeScore: newHomeScore,
           guestScore: newGuestScore,
-          seqInMatch: recentEvents.length + 1,
+          seqInMatch: nextGlobalSeq,
         };
         setPendingQueue(q => [...q, pending]);
         message.warning('Офлайн: событие добавлено в очередь');
@@ -340,6 +395,13 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
         });
         log('Event created:', newEvent);
         setRecentEvents(prev => [newEvent, ...prev].slice(0, 50));
+        // обновить maxSeqPerSet
+        setMaxSeqPerSet(prev => {
+          const next = new Map(prev);
+          const cur = next.get(liveState.currentSetNumber) ?? 0;
+          if (nextGlobalSeq > cur) next.set(liveState.currentSetNumber, nextGlobalSeq);
+          return next;
+        });
       }
 
       setLiveState(prev => {
@@ -357,7 +419,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
       }
 
       // проверка окончания партии
-      if (isSetOver(newHomeScore, newGuestScore, liveState.currentSetNumber)) {
+      if (isSetOver(newHomeScore, newGuestScore, liveState.currentSetNumber, setsToWin, tiebreakTarget)) {
         modal.confirm({
           title: `Партия ${liveState.currentSetNumber} завершена!`,
           content: `Счёт: ${newHomeScore}:${newGuestScore}. Завершить партию и перейти к следующей?`,
@@ -396,10 +458,14 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
       const newHomeMatchScore = liveState.homeMatchScore + (homeWon ? 1 : 0);
       const newGuestMatchScore = liveState.guestMatchScore + (homeWon ? 0 : 1);
 
-      if (newHomeMatchScore >= 3 || newGuestMatchScore >= 3) {
+      if (newHomeMatchScore >= setsToWin || newGuestMatchScore >= setsToWin) {
         try {
-          // statusCode 3 = Завершён (MatchStatusCodes.Completed)
-          await matchesApi.update(match.id, { ...match, statusCode: 3 });
+          // завершаем матч: обновляем статус и записываем endTime
+          await matchesApi.update(match.id, {
+            ...match,
+            statusCode: completedStatusCode,
+            endTime: new Date().toTimeString().slice(0, 8),
+          });
         } catch { /* не блокирует завершение */ }
         message.success('Матч завершён! Статус обновлён.');
         setLiveState(prev => ({
@@ -471,6 +537,9 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
 
       const nextServingTeamId = nextSetServingRef.current ?? defaultNextServing;
 
+      // сбросить фазу при переходе к новой партии
+      setRallyPhase('pre_serve');
+
       setLiveState(prev => {
         const sets = [...prev.sets.map(s =>
           s.setNumber === setNumber ? { ...s, isFinished: true } : s
@@ -510,16 +579,25 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
     setSaving(true);
     try {
       const cs = liveState.sets[liveState.currentSetNumber - 1] ?? { homeScore: 0, guestScore: 0 };
-      const evType = eventTypes.find(et => et.name.toLowerCase().includes('замена'));
-      log('eventType for sub:', evType, '| fallback code: 10');
-      const evTypeCode = evType?.code ?? eventTypes[0]?.code ?? 10;
+
+      // правильный тип события: «Замена либеро» или «Замена игрока» (Баг 12.10)
+      const targetName = data.isLiberoSwap ? 'Замена либеро' : 'Замена игрока';
+      const evType = eventTypes.find(et => et.name === targetName);
+      if (!evType) {
+        message.error(`Тип события "${targetName}" не найден в справочнике`);
+        setSaving(false);
+        return;
+      }
+
+      const nextGlobalSeq = nextSeqInSet(liveState.currentSetNumber);
+
       const payload = {
         setNumber: liveState.currentSetNumber,
-        eventTypeCode: evTypeCode,
+        eventTypeCode: evType.code,
         teamId: data.teamId,
         homeScoreAtMoment: cs.homeScore,
         guestScoreAtMoment: cs.guestScore,
-        globalSeqInSet: recentEvents.length + 1,
+        globalSeqInSet: nextGlobalSeq,
         substitution: {
           subOutPlayerId: data.subOutPlayerId,
           subInPlayerId: data.subInPlayerId,
@@ -530,6 +608,14 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
       log('POST /events payload:', payload);
       const created = await eventsApi.create(match.id, payload);
       log('Substitution event created:', created);
+
+      // обновить maxSeqPerSet
+      setMaxSeqPerSet(prev => {
+        const next = new Map(prev);
+        const cur = next.get(liveState.currentSetNumber) ?? 0;
+        if (nextGlobalSeq > cur) next.set(liveState.currentSetNumber, nextGlobalSeq);
+        return next;
+      });
 
       // обновить расстановку локально
       const allTeamPlayers = data.teamId === match.homeTeamId ? allHomePlayersFull : allGuestPlayersFull;
@@ -590,17 +676,34 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
       } catch { /* некритично */ }
     }
     const cs = liveState.sets[liveState.currentSetNumber - 1] ?? { homeScore: 0, guestScore: 0 };
-    const evType = eventTypes.find(et => et.name.toLowerCase().includes('тайм'));
+
+    // правильный тип события (Баг 12.10)
+    const evType = eventTypes.find(et => et.name === 'Командный тайм-аут');
+    if (!evType) {
+      message.error('Тип "Командный тайм-аут" не найден в справочнике');
+      return;
+    }
+
+    const nextGlobalSeq = nextSeqInSet(liveState.currentSetNumber);
+
     try {
-      await eventsApi.create(match.id, {
+      const created = await eventsApi.create(match.id, {
         setNumber: liveState.currentSetNumber,
-        eventTypeCode: evType?.code ?? 11,
+        eventTypeCode: evType.code,
         teamId,
         homeScoreAtMoment: cs.homeScore,
         guestScoreAtMoment: cs.guestScore,
-        globalSeqInSet: recentEvents.length + 1,
+        globalSeqInSet: nextGlobalSeq,
         timeout: { timeoutTypeCode: timeoutTypesRef.current[0]?.code ?? 1 },
       });
+      // обновить maxSeqPerSet
+      setMaxSeqPerSet(prev => {
+        const next = new Map(prev);
+        const cur = next.get(liveState.currentSetNumber) ?? 0;
+        if (nextGlobalSeq > cur) next.set(liveState.currentSetNumber, nextGlobalSeq);
+        return next;
+      });
+      if (created) setRecentEvents(prev => [created as unknown as MatchEvent, ...prev].slice(0, 50));
       message.success('Тайм-аут зафиксирован');
     } catch (err) {
       message.error(getApiError(err, 'Ошибка записи тайм-аута'));
@@ -613,7 +716,31 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
     const lastEvent = recentEvents[0];
     try {
       await eventsApi.delete(match.id, lastEvent.id);
+
+      // если последнее событие — замена, откатить расстановку локально
+      if (lastEvent.substitution) {
+        const sub = lastEvent.substitution;
+        setCurrentSetLineups(prev =>
+          prev.map(l =>
+            l.teamId === lastEvent.teamId && l.playerId === sub.subInPlayerId
+              ? { ...l, playerId: sub.subOutPlayerId, playerFullName: sub.subOutPlayerName, shirtNumber: undefined }
+              : l
+          )
+        );
+      }
+
       setRecentEvents(prev => prev.slice(1));
+      // обновить maxSeqPerSet — вычитаем удалённый seq если он был максимальным
+      setMaxSeqPerSet(prev => {
+        const next = new Map(prev);
+        const setNum = lastEvent.setNumber;
+        const curMax = next.get(setNum) ?? 0;
+        if ((lastEvent.globalSeqInSet ?? 0) >= curMax) {
+          next.set(setNum, Math.max(0, curMax - 1));
+        }
+        return next;
+      });
+
       // пересчитать счёт из оставшихся событий
       const newLast = recentEvents[1];
       if (newLast) {
@@ -696,6 +823,10 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
           </Text>
           <Space>
             <Tag color="orange" style={{ fontSize: 14 }}>Партия {liveState.currentSetNumber}</Tag>
+            {/* индикатор фазы розыгрыша (Баг 12.9) */}
+            {rallyPhase === 'pre_serve'
+              ? <Tag color="gold">⏸ Подготовка к подаче</Tag>
+              : <Tag color="green">▶ Мяч в игре</Tag>}
             <Button
               type="text"
               icon={<QuestionOutlined />}
@@ -753,6 +884,11 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
                   <Text type="secondary" style={{ fontSize: 13 }}>
                     Матч: {liveState.homeMatchScore} : {liveState.guestMatchScore}
                   </Text>
+                  <div style={{ marginTop: 4 }}>
+                    <Tag color="blue" style={{ fontSize: 11 }}>
+                      до {setsToWin} {setsToWin === 1 ? 'партии' : 'побед'}
+                    </Tag>
+                  </div>
                 </div>
               </Card>
 
@@ -771,7 +907,8 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
                     renderItem={(ev) => (
                       <List.Item style={{ padding: '3px 0', borderBottom: '1px solid #f0f0f0' }}>
                         <Text style={{ fontSize: 12 }}>
-                          {ev.playerFullName ? `${ev.playerFullName}` : (ev.teamName ?? '—')}
+                          {/* Баг 13.5: ev.playerFullName не существует в типе MatchEvent */}
+                          {ev.teamName ?? '—'}
                           {' — '}
                           {ev.eventTypeName ?? `тип ${ev.eventTypeCode}`}
                           {'  '}
@@ -819,11 +956,13 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
             >
               +1 {match.guestTeamName?.split(' ')[0] ?? 'Гости'}
             </Button>
+            {/* Баг 15.3: заблокировать тайм-аут в офлайне */}
             <Button
               size="small"
               icon={<span>⏰</span>}
               onClick={() => recordTimeout(match.homeTeamId)}
-              disabled={saving}
+              disabled={saving || !isOnline}
+              title={!isOnline ? 'Недоступно в офлайн-режиме' : undefined}
             >
               Тайм-аут {match.homeTeamName?.split(' ')[0] ?? 'А'}
             </Button>
@@ -831,15 +970,18 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
               size="small"
               icon={<span>⏰</span>}
               onClick={() => recordTimeout(match.guestTeamId)}
-              disabled={saving}
+              disabled={saving || !isOnline}
+              title={!isOnline ? 'Недоступно в офлайн-режиме' : undefined}
             >
               Тайм-аут {match.guestTeamName?.split(' ')[0] ?? 'Б'}
             </Button>
+            {/* Баг 15.3: заблокировать замену в офлайне */}
             <Button
               size="small"
               icon={<span>🔄</span>}
               onClick={() => { setSubDefaultPlayerId(undefined); setSubDefaultTeamId(undefined); setSubModalOpen(true); }}
-              disabled={saving}
+              disabled={saving || !isOnline}
+              title={!isOnline ? 'Недоступно в офлайн-режиме' : undefined}
             >
               Замена
             </Button>
@@ -988,6 +1130,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
             : (match.guestTeamName ?? 'Гости')
         }
         servingTeamId={servingTeamId}
+        rallyPhase={rallyPhase}
         onConfirm={handleActionConfirm}
         onCancel={() => { setActionPickerOpen(false); setSelectedPlayer(null); }}
       />
@@ -1013,7 +1156,7 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
         onCancel={() => { setSubModalOpen(false); setSubDefaultPlayerId(undefined); setSubDefaultTeamId(undefined); }}
       />
 
-      {/* модал санкции */}
+      {/* модал санкции (Баг 13.1: передаём счёт текущей партии) */}
       <SanctionQuickModal
         open={sanctionModalOpen}
         matchId={match.id}
@@ -1027,6 +1170,9 @@ const LiveMatchPanel: React.FC<LiveMatchPanelProps> = ({
         sanctionTypes={sanctionTypes}
         sanctionKinds={sanctionKinds}
         recipientTypes={recipientTypes}
+        homeScoreAtMoment={currentSet?.homeScore ?? 0}
+        guestScoreAtMoment={currentSet?.guestScore ?? 0}
+        nextMemberSeq={1}
         onConfirm={async (data) => {
           try {
             await sanctionsApi.create(match.id, data);

@@ -165,38 +165,6 @@ using (IServiceScope scope = app.Services.CreateScope())
     VolleyballDbContext dbContext = scope.ServiceProvider.GetRequiredService<VolleyballDbContext>();
     try
     {
-        // если таблицы созданы вручную через SQL, помечаем миграцию как выполненную
-        await dbContext.Database.ExecuteSqlRawAsync(@"
-            INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
-            SELECT '20260517194633_InitialCreate', '9.0.4'
-            WHERE NOT EXISTS (
-                SELECT 1 FROM ""__EFMigrationsHistory""
-                WHERE ""MigrationId"" = '20260517194633_InitialCreate'
-            )
-            AND EXISTS (
-                SELECT 1 FROM information_schema.tables
-                WHERE table_name = 's1_amplua'
-            )
-        ");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"[MigrationSync] Предупреждение: {ex.Message}");
-    }
-
-    try
-    {
-        // добавить колонку comment если отсутствует (идемпотентный ALTER TABLE)
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "ALTER TABLE t7_applications ADD COLUMN IF NOT EXISTS comment TEXT");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"[Schema] Предупреждение: не удалось добавить колонку comment — {ex.Message}");
-    }
-
-    try
-    {
         await DataSeeder.SeedAsync(dbContext);
     }
     catch (Exception ex)

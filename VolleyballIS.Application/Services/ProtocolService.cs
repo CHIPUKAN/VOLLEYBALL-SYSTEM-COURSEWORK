@@ -8,15 +8,24 @@ namespace VolleyballIS.Application.Services
     public class ProtocolService : IProtocolService
     {
         #region Поля
-        private readonly IProtocolRepository protocolRepository;   // репозиторий протоколов
+        private readonly IProtocolRepository protocolRepository;    // репозиторий протоколов
         private readonly IProtocolHistoryRepository historyRepository; // репозиторий журнала изменений
+        private readonly IMatchRepository matchRepository;          // репозиторий матчей (для проверки статуса)
+
+        // коды статусов матча, при которых разрешено создание протокола
+        private static readonly short[] MatchStatusesAllowProtocol = [2, 3, 6]; // В процессе, Завершён, Техническое поражение
+        private const short ProtocolApprovedCode = 3; // код статуса протокола «Утверждён»
         #endregion
 
         #region Конструкторы
-        public ProtocolService(IProtocolRepository protocolRepository, IProtocolHistoryRepository historyRepository) // конструктор с внедрением зависимостей
+        public ProtocolService(
+            IProtocolRepository protocolRepository,
+            IProtocolHistoryRepository historyRepository,
+            IMatchRepository matchRepository) // конструктор с внедрением зависимостей
         {
             this.protocolRepository = protocolRepository;
             this.historyRepository = historyRepository;
+            this.matchRepository = matchRepository;
         }
         #endregion
 
@@ -50,6 +59,23 @@ namespace VolleyballIS.Application.Services
                 throw new InvalidOperationException("Протокол для данного матча уже создан");
             }
 
+            T14Match? match = await matchRepository.GetByIdAsync(dto.MatchId);
+            if (match == null)
+            {
+                throw new KeyNotFoundException($"Матч с идентификатором {dto.MatchId} не найден");
+            }
+            if (!MatchStatusesAllowProtocol.Contains(match.StatusCode))
+            {
+                throw new InvalidOperationException(
+                    "Протокол можно создать только для матча в статусе «В процессе», «Завершён» или «Техническое поражение»");
+            }
+
+            // утверждённый протокол должен иметь дату утверждения
+            if (dto.StatusCode == ProtocolApprovedCode && !dto.ApprovalDate.HasValue)
+            {
+                throw new InvalidOperationException("Для статуса «Утверждён» требуется дата утверждения");
+            }
+
             T16Protocol protocol = new T16Protocol
             {
                 MatchId = dto.MatchId,
@@ -70,10 +96,18 @@ namespace VolleyballIS.Application.Services
                 throw new KeyNotFoundException($"Протокол с идентификатором {id} не найден");
             }
 
+            // при переходе в статус «Утверждён» должна быть дата утверждения
+            if (dto.StatusCode == ProtocolApprovedCode && !dto.ApprovalDate.HasValue && !existing.ApprovalDate.HasValue)
+            {
+                throw new InvalidOperationException("Для статуса «Утверждён» требуется дата утверждения");
+            }
+
             short previousStatus = existing.StatusCode;
-            existing.OrganizerId = dto.OrganizerId;
-            existing.ApprovalDate = dto.ApprovalDate;
             existing.StatusCode = dto.StatusCode;
+            // обновляем OrganizerId и ApprovalDate только если они явно переданы, не затирая существующие значения
+            if (dto.OrganizerId.HasValue) existing.OrganizerId = dto.OrganizerId;
+            if (dto.ApprovalDate.HasValue) existing.ApprovalDate = dto.ApprovalDate;
+
             T16Protocol updated = await protocolRepository.UpdateAsync(existing);
 
             if (updated.StatusCode != previousStatus)

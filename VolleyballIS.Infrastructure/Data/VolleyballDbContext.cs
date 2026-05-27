@@ -419,6 +419,8 @@ namespace VolleyballIS.Infrastructure.Data
                 entity.Property(e => e.MaxPlayersPerApp).HasColumnName("max_players_per_app");
                 entity.Property(e => e.FormatCode).HasColumnName("format_code").IsRequired();
                 entity.Property(e => e.ScoringSystemCode).HasColumnName("scoring_system_code").IsRequired();
+                entity.Property(e => e.SetsToWin).HasColumnName("sets_to_win").HasDefaultValue((short)3);
+                entity.Property(e => e.TiebreakScoreTarget).HasColumnName("tiebreak_score_target").HasDefaultValue((short)15);
 
                 entity.HasOne(e => e.Season)
                     .WithMany(s => s.Tournaments)

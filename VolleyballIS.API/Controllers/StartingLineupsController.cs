@@ -52,6 +52,15 @@ namespace VolleyballIS.API.Controllers
             return Ok(result);
         }
 
+        [HttpDelete("{teamId:int}/{setNumber:int}/{positionNo:int}")]
+        [Authorize(Roles = "Суперадминистратор,СекретарьМатча,ТренерКоманды")]
+        public async Task<IActionResult> DeletePosition(
+            int matchId, int teamId, short setNumber, short positionNo) // удалить одну позицию расстановки
+        {
+            await lineupService.DeletePositionAsync(matchId, teamId, setNumber, positionNo);
+            return NoContent();
+        }
+
         [HttpDelete]
         [Authorize(Roles = "Суперадминистратор,СекретарьМатча,ТренерКоманды")]
         public async Task<IActionResult> DeleteTeamSet(

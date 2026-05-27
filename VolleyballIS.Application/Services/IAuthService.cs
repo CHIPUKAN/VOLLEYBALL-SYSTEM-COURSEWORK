@@ -13,7 +13,7 @@ namespace VolleyballIS.Application.Services
 
         Task<IEnumerable<UserDto>> GetAllAsync(); // получить всех пользователей
 
-        Task<UserDto> UpdateAsync(int id, RegisterDto dto); // обновить пользователя
+        Task<UserDto> UpdateAsync(int id, UpdateUserDto dto); // обновить пользователя
 
         Task DeleteAsync(int id); // удалить пользователя
     }

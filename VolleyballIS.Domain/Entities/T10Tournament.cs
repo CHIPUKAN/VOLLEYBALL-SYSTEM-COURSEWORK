@@ -68,6 +68,10 @@ namespace VolleyballIS.Domain.Entities
 
         public short ScoringSystemCode { get; set; } // код системы начисления очков (внешний ключ -> s18_scoring_systems)
 
+        public short SetsToWin { get; set; } = 3; // до скольки побед по партиям играется матч (1, 2 или 3)
+
+        public short TiebreakScoreTarget { get; set; } = 15; // порог счёта в решающей партии
+
         // навигационные свойства
         public T9Season? Season { get; set; }               // сезон турнира
         public T13Organizer? Organizer { get; set; }         // организатор турнира

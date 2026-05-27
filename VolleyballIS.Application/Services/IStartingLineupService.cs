@@ -9,5 +9,6 @@ namespace VolleyballIS.Application.Services
         Task<IEnumerable<StartingLineupDto>> GetLineupsByMatchTeamSetAsync(int matchId, int teamId, short setNumber);
         Task<StartingLineupDto> UpsertPositionAsync(int matchId, UpsertStartingLineupDto dto);
         Task DeleteLineupAsync(int matchId, int teamId, short setNumber);
+        Task DeletePositionAsync(int matchId, int teamId, short setNumber, short positionNo);
     }
 }

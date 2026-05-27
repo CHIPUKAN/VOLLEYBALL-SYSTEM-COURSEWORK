@@ -49,6 +49,12 @@ namespace VolleyballIS.Application.DTOs.Tournaments
         [Required(ErrorMessage = "Система начисления очков обязательна")]
         [Range(1, short.MaxValue, ErrorMessage = "Код системы очков должен быть положительным")]
         public short ScoringSystemCode { get; set; } // код системы очков
+
+        [Range(1, 3, ErrorMessage = "Количество побед должно быть от 1 до 3")]
+        public short SetsToWin { get; set; } = 3; // до скольки побед по партиям играется матч
+
+        [Range(5, 30, ErrorMessage = "Порог решающей партии должен быть от 5 до 30 очков")]
+        public short TiebreakScoreTarget { get; set; } = 15; // порог счёта в решающей партии
         #endregion
     }
 }

@@ -154,7 +154,6 @@ const PlayerRadarChart: React.FC<PlayerRadarChartProps> = ({
       {compareStats && AXES.map((ax, i) => {
         const val = (compareStats as unknown as Record<string, number>)[ax.key] ?? 0;
         const r = scaledR(val, ax.max, radius);
-        const p = point(i, r);
         if (val === 0) return null;
         const outR = r + 14;
         const vp = outR > radius - 10

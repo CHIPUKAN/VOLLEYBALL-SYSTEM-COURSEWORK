@@ -175,8 +175,7 @@ const ApplicationsPage: React.FC = () => {
     try {
       const updated = await applicationsApi.addPlayer(selectedApp.id, {
         playerId: values.playerId as number,
-        shirtNumber: values.shirtNumber as number | undefined,
-        ampluaCode: values.ampluaCode as number | undefined,
+        shirtNumber: (values.shirtNumber as number) ?? 0,
         isLibero: !!(values.isLibero),
       });
       setSelectedApp(updated);
